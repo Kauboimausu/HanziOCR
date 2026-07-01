@@ -15,28 +15,33 @@ def make_char_list(opts):
     """
     files = opts.hsk_level
     unique_hanzi = []
-    unique_hanzi_df = pd.DataFrame(columns=["Simplified", "Traditional"])
+    unique_hanzi_df = pd.DataFrame(columns=["codepoint", "simplified", "traditional"])
     for file in files:
         hanzi_df = pd.read_csv(
-            os.path.join("./data/Old_HSK_tsvs/", file),
+            os.path.join(opts.root_folder, opts.hsk_list_folder, file),
             delimiter="\t",
             header=None,
-            names=["Traditional", "Simplified", "Pinyin", "Definition"],
+            names=["traditional", "simplified", "pinyin", "definition"],
         )
 
         hanzi_df.head(5)
         for _, row in hanzi_df.iterrows():
-            for simplified, traditional in zip(row["Simplified"], row["Traditional"]):
+            for simplified, traditional in zip(row["simplified"], row["traditional"]):
                 # print(f"simplified: {simplified}")
                 # print(f"traditional: {traditional}")
                 if simplified not in unique_hanzi:
                     unique_hanzi.append(simplified)
                     unique_hanzi_df.loc[len(unique_hanzi_df)] = [
+                        ord(simplified),
                         simplified,
                         traditional,
                     ]
 
-    unique_hanzi_df.to_csv(os.path.join(opts.root_folder, opts.save_location, opts.save_name))
+    unique_hanzi_df.set_index("codepoint")
+    unique_hanzi_df.sort_index(inplace=True)
+    unique_hanzi_df.to_csv(
+        os.path.join(opts.root_folder, opts.save_location, opts.save_name)
+    )
 
 
 # Source - https://stackoverflow.com/a/43357954
