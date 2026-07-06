@@ -1,3 +1,19 @@
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[project]
+name = "hanzi-ocr"
+version = "0.0.1"
+
+dependencies = [
+    "numpy",
+    "torchvision",
+    "torch",
+    "pandas",
+    "pillow"
+]
+
+requires-python = ">= 3.8"
+description = "An OCR project for Chinese characters (Hanzi)"
+readme = "README.md"
