@@ -11,7 +11,7 @@ def find_project_root():
     ---------
     Path object with the directory's root
     """
-    leaf = Path(__file__).parent()
+    leaf = Path(__file__).parent
     while not Path(leaf/"pyproject.toml").exists():
         if leaf.parent == leaf:
             raise Exception("Directory's root couldn't be found")
