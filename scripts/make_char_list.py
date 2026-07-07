@@ -1,26 +1,12 @@
 import pandas as pd
 import os
 import argparse
-from pathlib import Path
+from hanzi_ocr import utils
 
-def find_project_root():
-    """
-    Finds directory's root
-
-    Returns
-    ---------
-    Path object with the directory's root
-    """
-    leaf = Path(__file__).parent
-    while not Path(leaf/"pyproject.toml").exists():
-        if leaf.parent == leaf:
-            raise Exception("Directory's root couldn't be found")
-        leaf = leaf.parent
-    return leaf
 
 def make_char_list(opts):
     """
-    Generates a pd dataframe from the given files and saves it in the given ç
+    Generates a pd dataframe from the given files and saves it in the given 
     desired location as a csv
     Parameters
     ------------
@@ -28,7 +14,7 @@ def make_char_list(opts):
         Parameters given by the user
     """
 
-    dir_root = find_project_root()
+    dir_root = utils.find_project_root()
     files = opts.hsk_level
     unique_hanzi = []
     unique_hanzi_df = pd.DataFrame(columns=["codepoint", "simplified", "traditional"])
