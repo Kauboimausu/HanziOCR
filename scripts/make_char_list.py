@@ -20,7 +20,7 @@ def make_char_list(opts):
     unique_hanzi_df = pd.DataFrame(columns=["codepoint", "simplified", "traditional"])
     for file in files:
         hanzi_df = pd.read_csv(
-            os.path.join(dir_root, opts.root_folder, opts.hsk_list_folder, file),
+            os.path.join(dir_root, opts.data_folder, opts.hsk_list_folder, file),
             delimiter="\t",
             header=None,
             names=["traditional", "simplified", "pinyin", "definition"],
@@ -42,7 +42,7 @@ def make_char_list(opts):
     unique_hanzi_df.set_index("codepoint", inplace=True)
     unique_hanzi_df.sort_index(inplace=True)
     unique_hanzi_df.to_csv(
-        os.path.join(dir_root, opts.root_folder, opts.save_location, opts.save_name)
+        os.path.join(dir_root, opts.data_folder, opts.save_location, opts.save_name)
     )
 
 
@@ -64,7 +64,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--root_folder",
+        "--data_folder",
         type=str,
         default="data/",
         help="Root folder for the data inside the root project directory",
