@@ -46,20 +46,6 @@ def make_char_list(opts):
     )
 
 
-# Source - https://stackoverflow.com/a/43357954
-# Posted by Maxim, modified by community. See post 'Timeline' for change history
-# Retrieved 2026-06-16, License - CC BY-SA 4.0
-def str2bool(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ("yes", "true", "t", "y", "1"):
-        return True
-    elif v.lower() in ("no", "false", "f", "n", "0"):
-        return False
-    else:
-        raise argparse.ArgumentTypeError("Boolean value expected.")
-
-
 def main():
 
     parser = argparse.ArgumentParser()
