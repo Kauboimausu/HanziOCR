@@ -1,1 +1,6 @@
+# Data
 data
+
+# Cache files
+src/hanzi_ocr/__pycache__/
+
