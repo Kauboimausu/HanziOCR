@@ -18,8 +18,10 @@ def delete_images(opts):
     # Source - https://stackoverflow.com/a/185941
     # Posted by Nick Stinemates, modified by community. See post 'Timeline' for change history
     # Retrieved 2026-07-08, License - CC BY-SA 4.0
-    if opts.delete_previous:
+    if opts.delete_previous_images:
         folder = os.path.join(root_, opts.data_folder, opts.save_location)
+        if not os.path.exists(folder):
+            os.makedirs(folder)
         for filename in os.listdir(folder):
             file_path = os.path.join(folder, filename)
             try:
@@ -78,6 +80,14 @@ def write_images(opts):
      opts: argparse.Namespace
         Parameters given by the user
     """
+    # If it doesn't exist we create a folder for the fonts 
+    if not os.path.exists(os.path.join(root_, opts.data_folder, opts.font_location, font)):
+        os.makedirs(os.path.join(root_, opts.data_folder, opts.font_location, font))
+        print(f"WARNING: folder with fonts doesn't exist, creating folder, this will not generate images as there are no fonts to use")
+
+    # If the specified folder for the generated images doesn't already exist we'll create it 
+    if not os.path.exists(os.path.join(root_, opts.data_folder, opts.save_location)):
+        os.makedirs(os.path.join(root_, opts.data_folder, opts.save_location))
     fonts = get_fonts_list(opts)
     hanzi_df = get_hanzi_list(opts)
     num_img = 0

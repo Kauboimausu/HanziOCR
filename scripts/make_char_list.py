@@ -14,13 +14,20 @@ def make_char_list(opts):
         Parameters given by the user
     """
 
-    dir_root = utils.find_project_root()
+    root_dir = utils.find_project_root()
     files = opts.hsk_level
+
+    #If it doesn't already exist we'll create a folder for the hsk vocab lists
+    if not os.path.exists(os.path.join(root_dir, opts.data_folder, opts. hsk_list_folder)):
+        os.makedirs(os.path.join(root_dir, opts.data_folder, opts.hsk_list_folder))
+        print("WARNING: folder with the HSK vocabulary list didn't already exist, vocabulary list will not be generated as there's nothing to generate it from")
+
     unique_hanzi = []
     unique_hanzi_df = pd.DataFrame(columns=["codepoint", "simplified", "traditional"])
     for file in files:
+        print(f"Processing file {file}")
         hanzi_df = pd.read_csv(
-            os.path.join(dir_root, opts.data_folder, opts.hsk_list_folder, file),
+            os.path.join(root_dir, opts.data_folder, opts.hsk_list_folder, file),
             delimiter="\t",
             header=None,
             names=["traditional", "simplified", "pinyin", "definition"],
@@ -41,8 +48,11 @@ def make_char_list(opts):
 
     unique_hanzi_df.set_index("codepoint", inplace=True)
     unique_hanzi_df.sort_index(inplace=True)
+    if not os.path.exists(os.path.join(root_dir, opts.data_folder, opts.save_location)):
+        os.makedirs(os.path.join(root_dir, opts.data_folder, opts.save_location))
+
     unique_hanzi_df.to_csv(
-        os.path.join(dir_root, opts.data_folder, opts.save_location, opts.save_name)
+        os.path.join(root_dir, opts.data_folder, opts.save_location, opts.save_name)
     )
 
 
@@ -59,7 +69,7 @@ def main():
     parser.add_argument(
         "--hsk_list_folder",
         type=str,
-        default="Old_HSK_tsvs/",
+        default="old_hsk_tsvs/",
         help="Folder with the HSK words to be read",
     )
 
@@ -74,7 +84,7 @@ def main():
     parser.add_argument(
         "--save_location",
         type=str,
-        default="Characters/",
+        default="characters/",
         help="Directory in which to save the csv with the unique characters",
     )
 
