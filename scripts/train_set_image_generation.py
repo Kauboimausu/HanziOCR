@@ -88,19 +88,27 @@ def write_images(opts):
             f"WARNING: folder with fonts doesn't exist, creating folder, this will not generate images as there are no fonts to use"
         )
 
+    # We want to generate a manifest to keep track of what character, font, size, etc is being generated on each file.
+    manifest_df = pd.DataFrame(columns=["file name", "character", "font"])
+
     # If the specified folder for the generated images doesn't already exist we'll create it
     if not os.path.exists(os.path.join(root_, opts.data_folder, opts.save_location)):
         os.makedirs(os.path.join(root_, opts.data_folder, opts.save_location))
+
+    # We'll get the list of saved fonts and iterate through them 
     fonts = get_fonts_list(opts)
     hanzi_df = get_hanzi_list(opts)
     num_img = 0
-    for font in fonts:
+    # Weĺl load each font and iterate through our previously generated character list
+    for font_name in fonts:
         font = ImageFont.truetype(
-            font=os.path.join(root_, opts.data_folder, opts.font_location, font),
-            size=opts.stroke_size,
+            font=os.path.join(root_, opts.data_folder, opts.font_location, font_name),
+            size=opts.character_size,
         )
         for r in hanzi_df.itertuples(index=False):
         #for hanzi in ["影", "一", "口"]:
+            # Some characters differ in their simplified and traditional forms, it this happens we'll save both if the save_traditional flag is True
+            # Otherwise we'll keep only the simplified character
             if r.traditional != r.simplified:
                 if opts.save_traditional:
                     img1 = Image.new("RGB", (opts.image_width, opts.image_height), "white")
@@ -116,6 +124,7 @@ def write_images(opts):
                             f"hanzi_img_{num_img}.png",
                         )
                     )
+                    manifest_df.loc[len(manifest_df)] = [f"hanzi_img{num_img}.png", r.traditional, font_name]
                     num_img += 1
                 
                 img2 = Image.new("RGB", (opts.image_width, opts.image_height), "white")
@@ -133,14 +142,16 @@ def write_images(opts):
                         f"hanzi_img_{num_img}.png",
                     )
                 )
+                manifest_df.loc[len(manifest_df)] = [f"hanzi_img{num_img}.png", r.simplified, font_name]
                 num_img += 1
                 
+            # If they're the same it doesn't really matter which we save, but we'll save the traditional since that's our priority
             else:
                 img = Image.new("RGB", (opts.image_width, opts.image_height), "white")
                 draw = ImageDraw.Draw(img)
-                # textbox_val = draw.textbbox((opts.image_width/2, opts.image_height/2), text=r.traditional, font=font, anchor="mm", align="center")
+                # textbox_val = draw.textbbox((opts.image_width/2, opts.image_height/2), text=r.simplified, font=font, anchor="mm", align="center")
                 # print(textbox_val)
-                draw.text((opts.image_width/2, opts.image_height/2), text=r.traditional, font=font, fill="black", anchor="mm", align="center")
+                draw.text((opts.image_width/2, opts.image_height/2), text=r.simplified, font=font, fill="black", anchor="mm", align="center")
                 img.save(
                     os.path.join(
                         root_,
@@ -149,7 +160,13 @@ def write_images(opts):
                         f"hanzi_img_{num_img}.png",
                     )
                 )
+                manifest_df.loc[len(manifest_df)] = [f"hanzi_img{num_img}.png", r.simplified, font_name]
                 num_img += 1
+
+        # At the end we'll save our manifest df as a csv, this is important since this stores our ys for each X, the X being the image
+        if not os.path.exists(os.path.join(root_, opts.data_folder, opts.manifest_location)):
+            os.makedirs(os.path.join(root_, opts.data_folder, opts.manifest_location))
+        manifest_df.to_csv(os.path.join(root_, opts.data_folder, opts.manifest_location, opts.manifest_name))
 
 
 def main():
@@ -190,6 +207,20 @@ def main():
     )
 
     parser.add_argument(
+        "--manifest_location",
+        type=str,
+        default="images_manifest/",
+        help="Location in which to save the manifest file for the generated images"
+    )
+
+    parser.add_argument(
+        "--manifest_name",
+        type=str,
+        default="manifest.csv",
+        help="Name for the manifest file, it will store the image name, character, font, size, etc"
+    )
+
+    parser.add_argument(
         "--save_traditional",
         type=utils.str2bool,
         default=False,
@@ -204,10 +235,10 @@ def main():
     )
 
     parser.add_argument(
-        "--stroke_size",
+        "--character_size",
         type=int,
         default=250,
-        help="Tamaño de los caracteres, en píxeles"
+        help="Character size, in pixels. You want this to be smaller than the image width and height"
     )
 
     parser.add_argument(
@@ -221,7 +252,7 @@ def main():
         "--delete_previous_images",
         type=utils.str2bool,
         default=True,
-        help="If True deletes all previously generated images in the destinatio folder",
+        help="If True deletes all previously generated images in the destination folder",
     )
 
     opts = parser.parse_args()
