@@ -1,10 +1,11 @@
-from PIL import PcfFontFile, Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont
 import os, shutil
 import argparse
 from hanzi_ocr import utils
 import pandas as pd
 
 root_ = utils.find_project_root()
+
 
 def delete_images(opts):
     """
@@ -30,7 +31,7 @@ def delete_images(opts):
                 elif os.path.isdir(file_path):
                     shutil.rmtree(file_path)
             except Exception as e:
-                print('Failed to delete %s. Reason: %s' % (file_path, e))
+                print("Failed to delete %s. Reason: %s" % (file_path, e))
 
 
 def get_fonts_list(opts):
@@ -63,7 +64,7 @@ def get_hanzi_list(opts):
     Pandas dataframe with the hanzi data
     """
     hanzi_df = pd.read_csv(
-        os.path.join(root_, opts.data_folder, opts.hanzi_location, opts.hanzi_name_file)
+        os.path.join(root_, opts.data_folder, opts.hanzi_location, opts.hanzi_file_name)
     )
     return hanzi_df
 
@@ -80,63 +81,67 @@ def write_images(opts):
      opts: argparse.Namespace
         Parameters given by the user
     """
-    # If it doesn't exist we create a folder for the fonts 
-    if not os.path.exists(os.path.join(root_, opts.data_folder, opts.font_location, font)):
-        os.makedirs(os.path.join(root_, opts.data_folder, opts.font_location, font))
-        print(f"WARNING: folder with fonts doesn't exist, creating folder, this will not generate images as there are no fonts to use")
+    # If it doesn't exist we create a folder for the fonts
+    if not os.path.exists(os.path.join(root_, opts.data_folder, opts.font_location)):
+        os.makedirs(os.path.join(root_, opts.data_folder, opts.font_location))
+        print(
+            f"WARNING: folder with fonts doesn't exist, creating folder, this will not generate images as there are no fonts to use"
+        )
 
-    # If the specified folder for the generated images doesn't already exist we'll create it 
+    # If the specified folder for the generated images doesn't already exist we'll create it
     if not os.path.exists(os.path.join(root_, opts.data_folder, opts.save_location)):
         os.makedirs(os.path.join(root_, opts.data_folder, opts.save_location))
     fonts = get_fonts_list(opts)
     hanzi_df = get_hanzi_list(opts)
     num_img = 0
     for font in fonts:
-        with open(
-            os.path.join(root_, opts.data_folder, opts.font_location, font), "rb"
-        ) as fp:
-            font = PcfFontFile.PcfFontFile(fp)
-            imagefont = font.to_imagefont()
-            for r in hanzi_df.itertuples(index=False):
-                if r.traditional != r.simplified:
-                    img1 = Image.new("RGB", (400, 300), "white")
-                    draw1 = ImageDraw.Draw(img1)
-                    draw1.text((0, 0), r.traditional, font=imagefont)
-                    img1.save(
-                        os.path.join(
-                            root_,
-                            opts.data_folder,
-                            opts.save_location,
-                            f"hanzi_img_{num_img}",
-                        )
+        font = ImageFont.truetype(
+            font=os.path.join(root_, opts.data_folder, opts.font_location, font),
+            size=100,
+        )
+        for r in hanzi_df.itertuples(index=False):
+            if r.traditional != r.simplified:
+                img1 = Image.new("RGB", (400, 300), "white")
+                draw1 = ImageDraw.Draw(img1)
+                draw1.text((200, 150), r.traditional, font=font, fill="black", anchor="ms")
+                img1.save(
+                    os.path.join(
+                        root_,
+                        opts.data_folder,
+                        opts.save_location,
+                        f"hanzi_img_{num_img}.png",
                     )
-                    num_img += 1
+                )
+                num_img += 1
 
+                if opts.save_traditional:
                     img2 = Image.new("RGB", (400, 300), "white")
                     draw2 = ImageDraw.Draw(img2)
-                    draw2.text((0, 0), r.simplified, font=imagefont)
+                    draw2.text(
+                        (200, 150), r.simplified, font=font, fill="black", anchor="ms"
+                    )
                     img2.save(
                         os.path.join(
                             root_,
                             opts.data_folder,
                             opts.save_location,
-                            f"hanzi_img_{num_img}",
+                            f"hanzi_img_{num_img}.png",
                         )
                     )
                     num_img += 1
-                else:
-                    img = Image.new("RGB", (400, 300), "white")
-                    draw = ImageDraw.Draw(img)
-                    draw.text((0, 0), r.traditional, font=imagefont)
-                    img.save(
-                        os.path.join(
-                            root_,
-                            opts.data_folder,
-                            opts.save_location,
-                            f"hanzi_img_{num_img}",
-                        )
+            else:
+                img = Image.new("RGB", (400, 300), "white")
+                draw = ImageDraw.Draw(img)
+                draw.text((200, 150), r.traditional, font=font, fill="black", anchor="ms")
+                img.save(
+                    os.path.join(
+                        root_,
+                        opts.data_folder,
+                        opts.save_location,
+                        f"hanzi_img_{num_img}.png",
                     )
-                    num_img += 1
+                )
+                num_img += 1
 
 
 def main():
@@ -177,11 +182,19 @@ def main():
     )
 
     parser.add_argument(
+        "--save_traditional",
+        type=utils.str2bool,
+        default=False,
+        help="Whether or not to generate images for traditional characters alongside the simplified ones",
+    )
+
+
+    parser.add_argument(
         "--delete_previous_images",
         type=utils.str2bool,
         default=True,
-        help="If True deletes all previously generated images in the destinatio folder"
-        )
+        help="If True deletes all previously generated images in the destinatio folder",
+    )
 
     opts = parser.parse_args()
     if opts.delete_previous_images:
