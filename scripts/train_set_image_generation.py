@@ -115,22 +115,24 @@ def write_images(opts):
                     draw1 = ImageDraw.Draw(img1)
                     # textbox_val = draw1.textbbox((opts.image_width/2, opts.image_height/2), text=r.traditional, font=font, anchor="mm", align="center")
                     # print(textbox_val)
+                    file_name = f"hanzi_{r.codepoint}_{font_name}_trad.png"
                     draw1.text((opts.image_width/2, opts.image_height/2), text=r.traditional, font=font, fill="black", anchor="mm", align="center")
                     img1.save(
                         os.path.join(
                             root_,
                             opts.data_folder,
                             opts.save_location,
-                            f"hanzi_img_{num_img}.png",
+                            file_name,
                         )
                     )
-                    manifest_df.loc[len(manifest_df)] = [f"hanzi_img{num_img}.png", r.traditional, font_name]
+                    manifest_df.loc[len(manifest_df)] = [file_name, r.traditional, font_name]
                     num_img += 1
                 
                 img2 = Image.new("RGB", (opts.image_width, opts.image_height), "white")
                 draw2 = ImageDraw.Draw(img2)
                 # textbox_val = draw2.textbbox((opts.image_width/2, opts.image_height/2), text=r.traditional, font=font, anchor="mm", align="center")
                 # print(textbox_val)
+                file_name = f"hanzi_{r.codepoint}_{font_name}_simp.png"
                 draw2.text(
                     (opts.image_width/2, opts.image_height/2), text=r.simplified, font=font, fill="black", anchor="mm", align="center"
                 )
@@ -139,10 +141,10 @@ def write_images(opts):
                         root_,
                         opts.data_folder,
                         opts.save_location,
-                        f"hanzi_img_{num_img}.png",
+                        file_name,
                     )
                 )
-                manifest_df.loc[len(manifest_df)] = [f"hanzi_img{num_img}.png", r.simplified, font_name]
+                manifest_df.loc[len(manifest_df)] = [file_name, r.simplified, font_name]
                 num_img += 1
                 
             # If they're the same it doesn't really matter which we save, but we'll save the traditional since that's our priority
@@ -151,16 +153,17 @@ def write_images(opts):
                 draw = ImageDraw.Draw(img)
                 # textbox_val = draw.textbbox((opts.image_width/2, opts.image_height/2), text=r.simplified, font=font, anchor="mm", align="center")
                 # print(textbox_val)
+                file_name = f"hanzi_{r.codepoint}_{font_name}_both.png"
                 draw.text((opts.image_width/2, opts.image_height/2), text=r.simplified, font=font, fill="black", anchor="mm", align="center")
                 img.save(
                     os.path.join(
                         root_,
                         opts.data_folder,
                         opts.save_location,
-                        f"hanzi_img_{num_img}.png",
+                        file_name,
                     )
                 )
-                manifest_df.loc[len(manifest_df)] = [f"hanzi_img{num_img}.png", r.simplified, font_name]
+                manifest_df.loc[len(manifest_df)] = [file_name, r.simplified, font_name]
                 num_img += 1
 
         # At the end we'll save our manifest df as a csv, this is important since this stores our ys for each X, the X being the image
