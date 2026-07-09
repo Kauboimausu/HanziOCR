@@ -97,30 +97,18 @@ def write_images(opts):
     for font in fonts:
         font = ImageFont.truetype(
             font=os.path.join(root_, opts.data_folder, opts.font_location, font),
-            size=100,
+            size=opts.stroke_size,
         )
         for r in hanzi_df.itertuples(index=False):
+        #for hanzi in ["影", "一", "口"]:
             if r.traditional != r.simplified:
-                img1 = Image.new("RGB", (400, 300), "white")
-                draw1 = ImageDraw.Draw(img1)
-                draw1.text((200, 150), r.traditional, font=font, fill="black", anchor="ms")
-                img1.save(
-                    os.path.join(
-                        root_,
-                        opts.data_folder,
-                        opts.save_location,
-                        f"hanzi_img_{num_img}.png",
-                    )
-                )
-                num_img += 1
-
                 if opts.save_traditional:
-                    img2 = Image.new("RGB", (400, 300), "white")
-                    draw2 = ImageDraw.Draw(img2)
-                    draw2.text(
-                        (200, 150), r.simplified, font=font, fill="black", anchor="ms"
-                    )
-                    img2.save(
+                    img1 = Image.new("RGB", (opts.image_width, opts.image_height), "white")
+                    draw1 = ImageDraw.Draw(img1)
+                    # textbox_val = draw1.textbbox((opts.image_width/2, opts.image_height/2), text=r.traditional, font=font, anchor="mm", align="center")
+                    # print(textbox_val)
+                    draw1.text((opts.image_width/2, opts.image_height/2), text=r.traditional, font=font, fill="black", anchor="mm", align="center")
+                    img1.save(
                         os.path.join(
                             root_,
                             opts.data_folder,
@@ -129,10 +117,30 @@ def write_images(opts):
                         )
                     )
                     num_img += 1
+                
+                img2 = Image.new("RGB", (opts.image_width, opts.image_height), "white")
+                draw2 = ImageDraw.Draw(img2)
+                # textbox_val = draw2.textbbox((opts.image_width/2, opts.image_height/2), text=r.traditional, font=font, anchor="mm", align="center")
+                # print(textbox_val)
+                draw2.text(
+                    (opts.image_width/2, opts.image_height/2), text=r.simplified, font=font, fill="black", anchor="mm", align="center"
+                )
+                img2.save(
+                    os.path.join(
+                        root_,
+                        opts.data_folder,
+                        opts.save_location,
+                        f"hanzi_img_{num_img}.png",
+                    )
+                )
+                num_img += 1
+                
             else:
-                img = Image.new("RGB", (400, 300), "white")
+                img = Image.new("RGB", (opts.image_width, opts.image_height), "white")
                 draw = ImageDraw.Draw(img)
-                draw.text((200, 150), r.traditional, font=font, fill="black", anchor="ms")
+                # textbox_val = draw.textbbox((opts.image_width/2, opts.image_height/2), text=r.traditional, font=font, anchor="mm", align="center")
+                # print(textbox_val)
+                draw.text((opts.image_width/2, opts.image_height/2), text=r.traditional, font=font, fill="black", anchor="mm", align="center")
                 img.save(
                     os.path.join(
                         root_,
@@ -188,6 +196,26 @@ def main():
         help="Whether or not to generate images for traditional characters alongside the simplified ones",
     )
 
+    parser.add_argument(
+        "--image_width", 
+        type=int,
+        default="300",
+        help="Width of the generated image"
+    )
+
+    parser.add_argument(
+        "--stroke_size",
+        type=int,
+        default=250,
+        help="Tamaño de los caracteres, en píxeles"
+    )
+
+    parser.add_argument(
+        "--image_height", 
+        type=int,
+        default="300",
+        help="Height of the generated image"
+    )
 
     parser.add_argument(
         "--delete_previous_images",
