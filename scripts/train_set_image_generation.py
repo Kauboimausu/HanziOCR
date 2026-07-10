@@ -144,6 +144,8 @@ def write_images(opts):
 
     # We want to generate a manifest to keep track of what character, font, size, etc is being generated on each file.
     manifest_df = pd.DataFrame(columns=["file name", "character", "font"])
+    # We'll also generate a manifest for the characters that were not able to be rendered
+    error_manifest_df = pd.DataFrame(columns=["codepoint", "character", "font"])
 
     # If the specified folder for the generated images doesn't already exist we'll create it
     if not os.path.exists(os.path.join(root_, opts.data_folder, opts.save_location)):
@@ -164,29 +166,74 @@ def write_images(opts):
             )
         except Exception as e:
             print(f"ERROR: Could not load font {e}")
+
+        supported_chars = audit_font(
+            os.path.join(root_, opts.data_folder, opts.font_location, font_name),
+            hanzi_df,
+        )
         for r in hanzi_df.itertuples(index=True):
             # for hanzi in ["影", "一", "口"]:
             # Some characters differ in their simplified and traditional forms, it this happens we'll save both if the save_traditional flag is True
             # Otherwise we'll keep only the simplified character
             if r.traditional != r.simplified:
                 if opts.save_traditional:
-                    img1 = Image.new(
+                    trad_codepoint = ord(r.traditional)
+                    # We'll make sure the character is able to even be rendered
+                    if supported_chars[trad_codepoint] == True:
+                        img1 = Image.new(
+                            "RGB", (opts.image_width, opts.image_height), "white"
+                        )
+                        draw1 = ImageDraw.Draw(img1)
+                        # textbox_val = draw1.textbbox((opts.image_width/2, opts.image_height/2), text=r.traditional, font=font, anchor="mm", align="center")
+                        # print(textbox_val)
+                        file_name = f"hanzi_{trad_codepoint}_{font_name}.png"
+                        draw1.text(
+                            (opts.image_width / 2, opts.image_height / 2),
+                            text=r.traditional,
+                            font=font,
+                            fill="black",
+                            anchor="mm",
+                            align="center",
+                        )
+                        img1.save(
+                            os.path.join(
+                                root_,
+                                opts.data_folder,
+                                opts.save_location,
+                                file_name,
+                            )
+                        )
+                        manifest_df.loc[len(manifest_df)] = [
+                            file_name,
+                            r.traditional,
+                            font_name,
+                        ]
+                        num_img += 1
+                    else:
+                        # If it's not then we'll add it to the manifest for characters that couldn't be rendered
+                        error_manifest_df.loc[len(error_manifest_df)] = [
+                            trad_codepoint,
+                            r.traditional,
+                            font_name,
+                        ]
+
+                if supported_chars[r.Index] == True:
+                    img2 = Image.new(
                         "RGB", (opts.image_width, opts.image_height), "white"
                     )
-                    draw1 = ImageDraw.Draw(img1)
-                    # textbox_val = draw1.textbbox((opts.image_width/2, opts.image_height/2), text=r.traditional, font=font, anchor="mm", align="center")
+                    draw2 = ImageDraw.Draw(img2)
+                    # textbox_val = draw2.textbbox((opts.image_width/2, opts.image_height/2), text=r.traditional, font=font, anchor="mm", align="center")
                     # print(textbox_val)
-                    trad_codepoint = ord(r.traditioanl)
-                    file_name = f"hanzi_{trad_codepoint}_{font_name}.png"
-                    draw1.text(
+                    file_name = f"hanzi_{r.Index}_{font_name}.png"
+                    draw2.text(
                         (opts.image_width / 2, opts.image_height / 2),
-                        text=r.traditional,
+                        text=r.simplified,
                         font=font,
                         fill="black",
                         anchor="mm",
                         align="center",
                     )
-                    img1.save(
+                    img2.save(
                         os.path.join(
                             root_,
                             opts.data_folder,
@@ -196,60 +243,55 @@ def write_images(opts):
                     )
                     manifest_df.loc[len(manifest_df)] = [
                         file_name,
-                        r.traditional,
+                        r.simplified,
                         font_name,
                     ]
                     num_img += 1
-
-                img2 = Image.new("RGB", (opts.image_width, opts.image_height), "white")
-                draw2 = ImageDraw.Draw(img2)
-                # textbox_val = draw2.textbbox((opts.image_width/2, opts.image_height/2), text=r.traditional, font=font, anchor="mm", align="center")
-                # print(textbox_val)
-                file_name = f"hanzi_{r.Index}_{font_name}.png"
-                draw2.text(
-                    (opts.image_width / 2, opts.image_height / 2),
-                    text=r.simplified,
-                    font=font,
-                    fill="black",
-                    anchor="mm",
-                    align="center",
-                )
-                img2.save(
-                    os.path.join(
-                        root_,
-                        opts.data_folder,
-                        opts.save_location,
-                        file_name,
-                    )
-                )
-                manifest_df.loc[len(manifest_df)] = [file_name, r.simplified, font_name]
-                num_img += 1
+                else:
+                    error_manifest_df.loc[len(error_manifest_df)] = [
+                        r.Index,
+                        r.simplified,
+                        font_name,
+                    ]
 
             # If they're the same it doesn't really matter which we save, but we'll save the traditional since that's our priority
             else:
-                img = Image.new("RGB", (opts.image_width, opts.image_height), "white")
-                draw = ImageDraw.Draw(img)
-                # textbox_val = draw.textbbox((opts.image_width/2, opts.image_height/2), text=r.simplified, font=font, anchor="mm", align="center")
-                # print(textbox_val)
-                file_name = f"hanzi_{r.Index}_{font_name}.png"
-                draw.text(
-                    (opts.image_width / 2, opts.image_height / 2),
-                    text=r.simplified,
-                    font=font,
-                    fill="black",
-                    anchor="mm",
-                    align="center",
-                )
-                img.save(
-                    os.path.join(
-                        root_,
-                        opts.data_folder,
-                        opts.save_location,
-                        file_name,
+                if supported_chars[r.Index] == True:
+                    img = Image.new(
+                        "RGB", (opts.image_width, opts.image_height), "white"
                     )
-                )
-                manifest_df.loc[len(manifest_df)] = [file_name, r.simplified, font_name]
-                num_img += 1
+                    draw = ImageDraw.Draw(img)
+                    # textbox_val = draw.textbbox((opts.image_width/2, opts.image_height/2), text=r.simplified, font=font, anchor="mm", align="center")
+                    # print(textbox_val)
+                    file_name = f"hanzi_{r.Index}_{font_name}.png"
+                    draw.text(
+                        (opts.image_width / 2, opts.image_height / 2),
+                        text=r.simplified,
+                        font=font,
+                        fill="black",
+                        anchor="mm",
+                        align="center",
+                    )
+                    img.save(
+                        os.path.join(
+                            root_,
+                            opts.data_folder,
+                            opts.save_location,
+                            file_name,
+                        )
+                    )
+                    manifest_df.loc[len(manifest_df)] = [
+                        file_name,
+                        r.simplified,
+                        font_name,
+                    ]
+                    num_img += 1
+                else:
+                    error_manifest_df.loc[len(error_manifest_df)] = [
+                        r.index,
+                        r.simplified,
+                        font_name,
+                    ]
 
         # At the end we'll save our manifest df as a csv, this is important since this stores our ys for each X, the X being the image
         if not os.path.exists(
@@ -259,6 +301,15 @@ def write_images(opts):
         manifest_df.to_csv(
             os.path.join(
                 root_, opts.data_folder, opts.manifest_location, opts.manifest_name
+            )
+        )
+        # We will also save our error manifest, this tells us which characters were not able to be rendered with a particular font, we'll save it in the same location as the previous one, but with a different name of course
+        error_manifest_df.to_csv(
+            os.path.join(
+                root_,
+                opts.data_folder,
+                opts.manifest_location,
+                opts.error_manifest_name,
             )
         )
 
@@ -312,6 +363,13 @@ def main():
         type=str,
         default="manifest.csv",
         help="Name for the manifest file, it will store the image name, character, font, size, etc",
+    )
+
+    parser.add_argument(
+        "--error_manifest_name",
+        type=str,
+        default="error_manifest.csv",
+        help="Name for the manifest for characters that were not able to be rendered with a given font, it will save the codepoint, character and font with which the character could not be rendered",
     )
 
     parser.add_argument(
