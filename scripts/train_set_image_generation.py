@@ -153,10 +153,13 @@ def write_images(opts):
     num_img = 0
     # Weĺl load each font and iterate through our previously generated character list
     for font_name in fonts:
-        font = ImageFont.truetype(
-            font=os.path.join(root_, opts.data_folder, opts.font_location, font_name),
-            size=opts.character_size,
-        )
+        try:
+            font = ImageFont.truetype(
+                font=os.path.join(root_, opts.data_folder, opts.font_location, font_name),
+                size=opts.character_size,
+            )
+        except Exception as e:
+            print(f"ERROR: Could not load {font_name}")
         for r in hanzi_df.itertuples(index=False):
         #for hanzi in ["影", "一", "口"]:
             # Some characters differ in their simplified and traditional forms, it this happens we'll save both if the save_traditional flag is True
