@@ -12,7 +12,8 @@ dependencies = [
     "torch",
     "pandas",
     "pillow",
-    "scipy"
+    "scipy",
+    "fonttools"
 ]
 
 requires-python = ">= 3.8"
