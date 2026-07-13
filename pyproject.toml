@@ -14,7 +14,8 @@ dependencies = [
     "pillow",
     "scipy",
     "fonttools",
-    "datasets"
+    "datasets",
+    "opencc"
 ]
 
 requires-python = ">= 3.8"
