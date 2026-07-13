@@ -5,8 +5,6 @@ from hanzi_ocr import utils
 import pandas as pd
 from fontTools.ttLib import TTFont
 
-root_ = utils.find_project_root()
-
 
 def delete_images(opts):
     """
@@ -20,8 +18,10 @@ def delete_images(opts):
     # Source - https://stackoverflow.com/a/185941
     # Posted by Nick Stinemates, modified by community. See post 'Timeline' for change history
     # Retrieved 2026-07-08, License - CC BY-SA 4.0
+
+    root = utils.find_project_root()
     if opts.delete_previous_images:
-        folder = os.path.join(root_, opts.data_folder, opts.save_location)
+        folder = os.path.join(root, opts.data_folder, opts.save_location)
         if not os.path.exists(folder):
             os.makedirs(folder)
         for filename in os.listdir(folder):
@@ -48,7 +48,8 @@ def get_fonts_list(opts) -> list[str]:
     ----------
     List of fonts stored in specified directory
     """
-    return os.listdir(os.path.join(root_, opts.data_folder, opts.font_location))
+    root = utils.find_project_root()
+    return os.listdir(os.path.join(root, opts.data_folder, opts.font_location))
 
 
 def get_hanzi_list(opts) -> pd.DataFrame:
@@ -64,16 +65,19 @@ def get_hanzi_list(opts) -> pd.DataFrame:
     ---------
     Pandas dataframe with the hanzi data
     """
+    root = utils.find_project_root()
     hanzi_df = pd.read_csv(
         os.path.join(
-            root_, opts.data_folder, opts.hanzi_location, opts.hanzi_file_name
+            root, opts.data_folder, opts.hanzi_location, opts.hanzi_file_name
         ),
         index_col="codepoint",
     )
     return hanzi_df
 
 
-def audit_font(font_location, hanzi_df, audit_traditional) -> dict:
+def audit_font(
+    font_location: str, hanzi_df: pd.DataFrame, audit_traditional: bool
+) -> dict:
     """
     Tells the program which characters are able to be rendered by a
     particular font, those that aren't will be skipped so as to not
@@ -110,12 +114,12 @@ def audit_font(font_location, hanzi_df, audit_traditional) -> dict:
 
                     # we do not have to look up the codepoint for the simplified
                     # as we already have it in the codepoint column, which is the index
-                    supported[r.codepoint] = r.Index in cmap
+                    supported[r.Index] = r.Index in cmap
                 # if the two characters are the same then we don't have to
                 # do anything special
                 else:
                     # Check if the code point exists in the cmap
-                    supported[r.codepoint] = r.Index in cmap
+                    supported[r.Index] = r.Index in cmap
     except Exception as e:
         print(f"Error loading font: {e}")
         return supported
@@ -135,8 +139,9 @@ def write_images(opts):
      opts: argparse.Namespace
         Parameters given by the user
     """
+    root = utils.find_project_root()
     # If it doesn't exist we create a folder for the fonts
-    if not os.path.exists(os.path.join(root_, opts.data_folder, opts.font_location)):
+    if not os.path.exists(os.path.join(root, opts.data_folder, opts.font_location)):
         print(
             f"WARNING: folder with fonts doesn't exist, make sure the name is properly given"
         )
@@ -148,8 +153,8 @@ def write_images(opts):
     error_manifest_df = pd.DataFrame(columns=["codepoint", "character", "font"])
 
     # If the specified folder for the generated images doesn't already exist we'll create it
-    if not os.path.exists(os.path.join(root_, opts.data_folder, opts.save_location)):
-        os.makedirs(os.path.join(root_, opts.data_folder, opts.save_location))
+    if not os.path.exists(os.path.join(root, opts.data_folder, opts.save_location)):
+        os.makedirs(os.path.join(root, opts.data_folder, opts.save_location))
 
     # We'll get the list of saved fonts and iterate through them
     fonts = get_fonts_list(opts)
@@ -160,7 +165,7 @@ def write_images(opts):
         try:
             font = ImageFont.truetype(
                 font=os.path.join(
-                    root_, opts.data_folder, opts.font_location, font_name
+                    root, opts.data_folder, opts.font_location, font_name
                 ),
                 size=opts.character_size,
             )
@@ -168,8 +173,11 @@ def write_images(opts):
             print(f"ERROR: Could not load font {e}")
 
         supported_chars = audit_font(
-            os.path.join(root_, opts.data_folder, opts.font_location, font_name),
-            hanzi_df,
+            font_location=os.path.join(
+                root, opts.data_folder, opts.font_location, font_name
+            ),
+            hanzi_df=hanzi_df,
+            audit_traditional=opts.save_location,
         )
         for r in hanzi_df.itertuples(index=True):
             # for hanzi in ["影", "一", "口"]:
@@ -197,7 +205,7 @@ def write_images(opts):
                         )
                         img1.save(
                             os.path.join(
-                                root_,
+                                root,
                                 opts.data_folder,
                                 opts.save_location,
                                 file_name,
@@ -235,7 +243,7 @@ def write_images(opts):
                     )
                     img2.save(
                         os.path.join(
-                            root_,
+                            root,
                             opts.data_folder,
                             opts.save_location,
                             file_name,
@@ -249,7 +257,7 @@ def write_images(opts):
                     num_img += 1
                 else:
                     error_manifest_df.loc[len(error_manifest_df)] = [
-                        r.Index,
+                        ord(r.simplified),
                         r.simplified,
                         font_name,
                     ]
@@ -274,7 +282,7 @@ def write_images(opts):
                     )
                     img.save(
                         os.path.join(
-                            root_,
+                            root,
                             opts.data_folder,
                             opts.save_location,
                             file_name,
@@ -288,29 +296,29 @@ def write_images(opts):
                     num_img += 1
                 else:
                     error_manifest_df.loc[len(error_manifest_df)] = [
-                        r.index,
+                        ord(r.simplified),
                         r.simplified,
                         font_name,
                     ]
 
         # At the end we'll save our manifest df as a csv, this is important since this stores our ys for each X, the X being the image
         if not os.path.exists(
-            os.path.join(root_, opts.data_folder, opts.manifest_location)
+            os.path.join(root, opts.data_folder, opts.manifest_location)
         ):
-            os.makedirs(os.path.join(root_, opts.data_folder, opts.manifest_location))
+            os.makedirs(os.path.join(root, opts.data_folder, opts.manifest_location))
         manifest_df.to_csv(
             os.path.join(
-                root_, opts.data_folder, opts.manifest_location, opts.manifest_name
-            )
+                root, opts.data_folder, opts.manifest_location, opts.manifest_name
+            ), index=False
         )
         # We will also save our error manifest, this tells us which characters were not able to be rendered with a particular font, we'll save it in the same location as the previous one, but with a different name of course
         error_manifest_df.to_csv(
             os.path.join(
-                root_,
+                root,
                 opts.data_folder,
                 opts.manifest_location,
                 opts.error_manifest_name,
-            )
+            ), index=False
         )
 
 
@@ -373,13 +381,6 @@ def main():
     )
 
     parser.add_argument(
-        "--save_traditional",
-        type=utils.str2bool,
-        default=False,
-        help="Whether or not to generate images for traditional characters alongside the simplified ones",
-    )
-
-    parser.add_argument(
         "--image_width", type=int, default="300", help="Width of the generated image"
     )
 
@@ -392,6 +393,13 @@ def main():
 
     parser.add_argument(
         "--image_height", type=int, default="300", help="Height of the generated image"
+    )
+
+    parser.add_argument(
+        "--save_traditional",
+        type=utils.str2bool,
+        default=False,
+        help="Whether or not to generate images for traditional characters alongside the simplified ones",
     )
 
     parser.add_argument(
