@@ -1,13 +1,15 @@
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 import argparse
 import os
 from hanzi_ocr import utils
 
-def 
-
 def save_dataset(opts):
     """
     Saves the chinese wikipedia dataset in the specified location
+    Parameters
+    -----------
+    opts: argparse.Namespace
+        Parameters given by the user
     """
     # First we'll find the project's root
     root = utils.find_project_root()
