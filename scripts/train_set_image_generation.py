@@ -6,6 +6,60 @@ import pandas as pd
 from fontTools.ttLib import TTFont
 from datasets import load_from_disk, Dataset 
 
+def take_wiki_excerpt(wiki_entry, excerpt_min_length, excerpt_max_length, random):
+    """
+    Takes a random excerpt from the wiki entry and returns it
+
+    Parameters
+    ----------
+    wiki_entry
+        An entry from Chinese Wikipedia
+
+    excerpt_min_length: int
+        Minimum length of the excerpt
+
+    excerpt_man_length: int
+        Maximum length of the excerpt
+
+    random: random
+        An initialized random instance, for reproducibility's sake
+
+    Returns
+    ---------
+    An excerpt from the wikipedia article of the given length range, or None if the requested string is not possible
+    """
+
+    # First we'll see how long our excerpt will be 
+    # It is quite unlikely that the user has requested a string that is longer than 
+    # the length of the article, but just in case we'll check that it isn't 
+    # if the minimum length is longer than the article itself then we'll just skip this entry
+    if excerpt_min_length > len(wiki_entry):
+        return None
+    elif excerpt_min_length == len(wiki_entry):
+        return wiki_entry
+    excerpt_length = random.randint(excerpt_min_length, min(excerpt_max_length, len(wiki_entry)))
+
+    start_pointer = random.randint(0, len(wiki_entry) - excerpt_length)
+
+    return wiki_entry[start_pointer:(start_pointer + excerpt_length)]
+
+
+def load_wiki_dataset(opts):
+    """
+    Loads the dataset from the indicated disk location so the 
+
+    Parameters
+    ------------
+    opts: argparse.Namespace
+        Parameters given by the user
+    """
+    root = utils.find_project_root()
+    try:
+        ds = load_from_disk(os.path.join(root, opts.data_folder, opts.wiki_ds_data))
+        return ds
+    except Exception as e: 
+        print(f"Dataset could not be loaded: {e}")
+    
 
 def delete_images(opts):
     """
@@ -379,6 +433,13 @@ def main():
         type=str,
         default="zh_text_imgs/",
         help="Directory in which to save the images with the rendered text lines",
+    )
+
+    parser.add_argument(
+        "--wiki_ds_location",
+        type=str,
+        default="zh_wiki_data/",
+        help="Data where the Chinese wikipedia data was saved, if it hasn't been saved run the download_zh_wiki.py script"
     )
 
     parser.add_argument(
