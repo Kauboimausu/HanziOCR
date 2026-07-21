@@ -4,7 +4,10 @@ import argparse
 from hanzi_ocr import utils
 import pandas as pd
 from fontTools.ttLib import TTFont
-from datasets import load_from_disk, Dataset 
+from datasets import load_from_disk, Dataset
+from opencc import OpenCC
+import re
+
 
 def take_wiki_excerpt(wiki_entry, excerpt_min_length, excerpt_max_length, random):
     """
@@ -29,24 +32,26 @@ def take_wiki_excerpt(wiki_entry, excerpt_min_length, excerpt_max_length, random
     An excerpt from the wikipedia article of the given length range, or None if the requested string is not possible
     """
 
-    # First we'll see how long our excerpt will be 
-    # It is quite unlikely that the user has requested a string that is longer than 
-    # the length of the article, but just in case we'll check that it isn't 
+    # First we'll see how long our excerpt will be
+    # It is quite unlikely that the user has requested a string that is longer than
+    # the length of the article, but just in case we'll check that it isn't
     # if the minimum length is longer than the article itself then we'll just skip this entry
     if excerpt_min_length > len(wiki_entry):
         return None
     elif excerpt_min_length == len(wiki_entry):
         return wiki_entry
-    excerpt_length = random.randint(excerpt_min_length, min(excerpt_max_length, len(wiki_entry)))
+    excerpt_length = random.randint(
+        excerpt_min_length, min(excerpt_max_length, len(wiki_entry))
+    )
 
     start_pointer = random.randint(0, len(wiki_entry) - excerpt_length)
 
-    return wiki_entry[start_pointer:(start_pointer + excerpt_length)]
+    return wiki_entry[start_pointer : (start_pointer + excerpt_length)]
 
 
 def load_wiki_dataset(opts):
     """
-    Loads the dataset from the indicated disk location so the 
+    Loads the dataset from the indicated disk location so the
 
     Parameters
     ------------
@@ -57,9 +62,9 @@ def load_wiki_dataset(opts):
     try:
         ds = load_from_disk(os.path.join(root, opts.data_folder, opts.wiki_ds_data))
         return ds
-    except Exception as e: 
+    except Exception as e:
         print(f"Dataset could not be loaded: {e}")
-    
+
 
 def delete_images(opts):
     """
@@ -109,6 +114,7 @@ def get_fonts_list(opts) -> list[str]:
     except Exception as e:
         raise Exception(f"Folder could not be found: {e}")
 
+
 def load_wikipedia_data(opts) -> Dataset:
     """
     Retrieves the dataset from the disk and returns it
@@ -123,8 +129,10 @@ def load_wikipedia_data(opts) -> Dataset:
     List of fonts stored in specified directory
     """
     root = utils.find_project_root()
-    try: 
-        return load_from_disk(os.path.join(root, opts.data_folder, opts.zh_wiki_location))
+    try:
+        return load_from_disk(
+            os.path.join(root, opts.data_folder, opts.zh_wiki_location)
+        )
     except Exception as e:
         print(f"File could not be found at given location: {e}")
 
@@ -145,12 +153,49 @@ def get_hanzi_list(opts) -> pd.DataFrame:
     root = utils.find_project_root()
     try:
         hanzi_df = pd.read_csv(
-            os.path.join(root, opts.data_folder, opts.hanzi_location, opts.hanzi_file_name),
+            os.path.join(
+                root, opts.data_folder, opts.hanzi_location, opts.hanzi_file_name
+            ),
             index_col="codepoint",
         )
         return hanzi_df
     except Exception as e:
         print(f"File could not be found at given location: {e}")
+
+
+def clean_entry_text(wiki_entry, hanzi_styles, converter):
+    """
+    Removes garbage text from the wiki's entry. Also converts from traditional to simpliified, if need be
+
+    Parameters
+    -----------
+    wiki_entry
+        The entry to clean up
+
+    Returns
+    -----------
+    Returns the entry split by newlines in the order: Simplified, Traditional. If either was not requested it won't be returned at all (the number of returns will change, None will not be returned in its place)
+    """
+
+    wiki_entry = re.sub(r"={2,}", "", wiki_entry)
+    wiki_entry = re.sub(r"\\[a-zA-Z]+(\{[a-zA-Z0-9]+\})?", "", wiki_entry)
+    wiki_entry = wiki_entry.replace("|", "")
+
+    if "S" in hanzi_styles.upper() and "T" in hanzi_styles.upper():
+        simplified_entry = converter.convert(wiki_entry)
+        simplified_splits = simplified_entry.split("\n")
+        traditional_splits = wiki_entry.split("\n")
+
+        return simplified_splits, traditional_splits
+    elif "S" in hanzi_styles.upper():
+        simplified_entry = converter.convert(wiki_entry)
+        simplified_splits = simplified_entry.split("\n")
+
+        return simplified_splits
+    elif "T" in hanzi_styles.upper():
+        traditional_splits = wiki_entry.split("\n")
+
+        return traditional_splits
 
 
 def audit_font(
@@ -239,6 +284,7 @@ def write_images(opts):
     # hanzi_df = get_hanzi_list(opts)
     wikipedia_ds = load_wikipedia_data(opts)
     print(wikipedia_ds.column_names)
+    print(type(wikipedia_ds[0]['text']))
     return
     num_img = 0
     # Weĺl load each font and iterate through our previously generated character list
@@ -439,7 +485,7 @@ def main():
         "--wiki_ds_location",
         type=str,
         default="zh_wiki_data/",
-        help="Data where the Chinese wikipedia data was saved, if it hasn't been saved run the download_zh_wiki.py script"
+        help="Data where the Chinese wikipedia data was saved, if it hasn't been saved run the download_zh_wiki.py script",
     )
 
     parser.add_argument(
@@ -497,6 +543,13 @@ def main():
         type=int,
         default=21,
         help="Random seed used for picking out snippets of text to render",
+    )
+
+    parser.add_argument(
+        "--hanzi_types",
+        type=str,
+        default="S",
+        help="Which hanzi types to include: S - Simplified, T - Traditional, both can be included in any order, and with any capitalization",
     )
 
     parser.add_argument(

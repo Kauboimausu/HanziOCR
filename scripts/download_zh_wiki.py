@@ -1,4 +1,4 @@
-from datasets import load_dataset, load_from_disk
+from datasets import load_dataset
 import argparse
 import os
 from hanzi_ocr import utils
