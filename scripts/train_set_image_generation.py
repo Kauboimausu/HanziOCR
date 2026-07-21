@@ -4,6 +4,7 @@ import argparse
 from hanzi_ocr import utils
 import pandas as pd
 from fontTools.ttLib import TTFont
+from datasets import load_from_disk, Dataset 
 
 
 def delete_images(opts):
@@ -49,7 +50,29 @@ def get_fonts_list(opts) -> list[str]:
     List of fonts stored in specified directory
     """
     root = utils.find_project_root()
-    return os.listdir(os.path.join(root, opts.data_folder, opts.font_location))
+    try:
+        return os.listdir(os.path.join(root, opts.data_folder, opts.font_location))
+    except Exception as e:
+        raise Exception(f"Folder could not be found: {e}")
+
+def load_wikipedia_data(opts) -> Dataset:
+    """
+    Retrieves the dataset from the disk and returns it
+
+    Parameters
+    ----------
+    opts: argparse.Namespace
+        Parameters given by the user
+
+    Returns
+    ----------
+    List of fonts stored in specified directory
+    """
+    root = utils.find_project_root()
+    try: 
+        return load_from_disk(os.path.join(root, opts.data_folder, opts.zh_wiki_location))
+    except Exception as e:
+        print(f"File could not be found at given location: {e}")
 
 
 def get_hanzi_list(opts) -> pd.DataFrame:
@@ -66,13 +89,14 @@ def get_hanzi_list(opts) -> pd.DataFrame:
     Pandas dataframe with the hanzi data
     """
     root = utils.find_project_root()
-    hanzi_df = pd.read_csv(
-        os.path.join(
-            root, opts.data_folder, opts.hanzi_location, opts.hanzi_file_name
-        ),
-        index_col="codepoint",
-    )
-    return hanzi_df
+    try:
+        hanzi_df = pd.read_csv(
+            os.path.join(root, opts.data_folder, opts.hanzi_location, opts.hanzi_file_name),
+            index_col="codepoint",
+        )
+        return hanzi_df
+    except Exception as e:
+        print(f"File could not be found at given location: {e}")
 
 
 def audit_font(
@@ -158,7 +182,10 @@ def write_images(opts):
 
     # We'll get the list of saved fonts and iterate through them
     fonts = get_fonts_list(opts)
-    hanzi_df = get_hanzi_list(opts)
+    # hanzi_df = get_hanzi_list(opts)
+    wikipedia_ds = load_wikipedia_data(opts)
+    print(wikipedia_ds.column_names)
+    return
     num_img = 0
     # Weĺl load each font and iterate through our previously generated character list
     for font_name in fonts:
@@ -277,7 +304,7 @@ def write_images(opts):
                         text=r.simplified,
                         font=font,
                         fill="black",
-                        anchor="mm",
+                        anchor="lm",
                         align="center",
                     )
                     img.save(
@@ -309,7 +336,8 @@ def write_images(opts):
         manifest_df.to_csv(
             os.path.join(
                 root, opts.data_folder, opts.manifest_location, opts.manifest_name
-            ), index=False
+            ),
+            index=False,
         )
         # We will also save our error manifest, this tells us which characters were not able to be rendered with a particular font, we'll save it in the same location as the previous one, but with a different name of course
         error_manifest_df.to_csv(
@@ -318,7 +346,8 @@ def write_images(opts):
                 opts.data_folder,
                 opts.manifest_location,
                 opts.error_manifest_name,
-            ), index=False
+            ),
+            index=False,
         )
 
 
@@ -339,24 +368,17 @@ def main():
     )
 
     parser.add_argument(
-        "--hanzi_location",
+        "--zh_wiki_location",
         type=str,
-        default="characters",
-        help="Folder with processed hanzi list",
-    )
-
-    parser.add_argument(
-        "--hanzi_file_name",
-        type=str,
-        default="characters.csv",
-        help="File in which the hanzi list is stored",
+        default="zh_wiki_data/",
+        help="Folder with Mandarin Wikipedia texts",
     )
 
     parser.add_argument(
         "--save_location",
         type=str,
-        default="character_images/",
-        help="Directory in which to save the images with the characters",
+        default="zh_text_imgs/",
+        help="Directory in which to save the images with the rendered text lines",
     )
 
     parser.add_argument(
@@ -370,36 +392,50 @@ def main():
         "--manifest_name",
         type=str,
         default="manifest.csv",
-        help="Name for the manifest file, it will store the image name, character, font, size, etc",
+        help="Name for the manifest file, it stores the ground truth, image_name, font used, etc",
     )
 
     parser.add_argument(
         "--error_manifest_name",
         type=str,
         default="error_manifest.csv",
-        help="Name for the manifest for characters that were not able to be rendered with a given font, it will save the codepoint, character and font with which the character could not be rendered",
+        help="Name for the manifest of the text lines that could not be rendered due to at least one of the characters not being in the target font, stores problem hanzi, its codepoint and font ",
     )
 
     parser.add_argument(
-        "--image_width", type=int, default="300", help="Width of the generated image"
+        "--image_height",
+        type=int,
+        default=64,
+        help="Height of the generated image, the width is calculated dynamically",
+    )
+
+    parser.add_argument(
+        "--snippet_length_range",
+        type=int,
+        nargs=2,
+        default=[1, 15],
+        help="Range of the length of the snippets to be picked, first number is the minimum (inclusive), the second is the maximum (inclusive)",
     )
 
     parser.add_argument(
         "--character_size",
         type=int,
-        default=250,
-        help="Character size, in pixels. You want this to be smaller than the image width and height",
-    )
-
-    parser.add_argument(
-        "--image_height", type=int, default="300", help="Height of the generated image"
+        default=60,
+        help="Character size, in pixels. You want this to be smaller than the image height",
     )
 
     parser.add_argument(
         "--save_traditional",
         type=utils.str2bool,
         default=False,
-        help="Whether or not to generate images for traditional characters alongside the simplified ones",
+        help="By default the data is pulled from traditional characters and converted into its simplified version, with the traditional version thrown away, if this is set to True it will not be thrown away",
+    )
+
+    parser.add_argument(
+        "--random_seed",
+        type=int,
+        default=21,
+        help="Random seed used for picking out snippets of text to render",
     )
 
     parser.add_argument(
