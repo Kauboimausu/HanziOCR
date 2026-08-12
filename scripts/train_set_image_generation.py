@@ -7,7 +7,8 @@ from fontTools.ttLib import TTFont
 from datasets import load_from_disk, Dataset
 import opencc
 import re
-import random
+from random import Random
+from math import ceil
 
 
 def take_wiki_excerpt(wiki_entry, excerpt_min_length, excerpt_max_length, random):
@@ -178,22 +179,39 @@ def clean_entry_text(wiki_entry, hanzi_styles, converter):
     Returns the entry split by newlines in the order: Simplified, Traditional. If either was not requested it won't be returned at all (the number of returns will change, None will not be returned in its place)
     """
 
-    wiki_entry = re.sub(r"={2,}", "", wiki_entry)
-    wiki_entry = re.sub(r"\\[a-zA-Z]+(\{[a-zA-Z0-9]+\})?", "", wiki_entry)
-    wiki_entry = wiki_entry.replace("|", "")
+    # wiki_entry = re.sub(r"={2,}", "", wiki_entry)
+    # wiki_entry = re.sub(r"\\[a-zA-Z]+(\{[a-zA-Z0-9]+\})?", "", wiki_entry)
+    # wiki_entry = re.sub(
+    #    r"(</?p>|</p *+>|</?b>|</b *+>|</?span>|</?span id=" * +">|</?h[1-6]>)|",
+    #    "",
+    #    wiki_entry,
+    # )
 
-    if "S" in hanzi_styles.upper() and "T" in hanzi_styles.upper():
+    wiki_entry = wiki_entry.replace("**", "")
+    wiki_entry = wiki_entry.replace("__", "")
+    wiki_entry = wiki_entry.replace("##", "")
+    wiki_entry = re.sub(r"$.+$", "", wiki_entry)
+    wiki_entry = wiki_entry.replace("「!」", "")
+    wiki_entry = wiki_entry.replace("( ! )", "")
+    wiki_entry = wiki_entry.replace("「?」", "")
+    wiki_entry = wiki_entry.replace("( ? )", "")
+    # wiki_entry = re.sub(r"( ! )|「!」", "!", wiki_entry)
+    # wiki_entry = re.sub(r"( ? )|「?」", "!", wiki_entry)
+
+    if ("S" in hanzi_styles or "s" in hanzi_styles) and (
+        "T" in hanzi_styles or "t" in hanzi_styles
+    ):
         simplified_entry = converter.convert(wiki_entry)
         simplified_splits = simplified_entry.split("\n")
         traditional_splits = wiki_entry.split("\n")
 
         return (simplified_splits, "simplified"), (traditional_splits, "traditional")
-    elif "S" in hanzi_styles.upper():
+    elif "S" in hanzi_styles:
         simplified_entry = converter.convert(wiki_entry)
         simplified_splits = simplified_entry.split("\n")
 
         return (simplified_splits, "simplified")
-    elif "T" in hanzi_styles.upper():
+    elif "T" in hanzi_styles:
         traditional_splits = wiki_entry.split("\n")
 
         return (traditional_splits, "traditional")
@@ -239,8 +257,9 @@ def write_images(opts):
         )
         return
 
+    trial_counter = 5
     # We'll initialize our rng and traditional to simplified chinese converter
-    random = random.seed(opts.random_seed)
+    random = Random(opts.random_seed)
     converter = opencc.OpenCC("t2s.json")
 
     # Weĺl load each font and iterate through our previously generated character list
@@ -262,20 +281,19 @@ def write_images(opts):
 
         # We'll iterate through each dataset entry
         for wiki_page in wikipedia_ds:
-            # We unpack the values, the title is not needed, the text is
-            title, entry_text = wiki_page
+            # We'll obtain the parts of the page we need, we'll keep the page id for the manifest and the markdown for the text
+            pid = wiki_page["pageid"]
+            pmd = wiki_page["markdown"]
 
             # We'll clean the text as much as possible from formatting artifacts
-            cleaned_split_text = clean_entry_text(
-                entry_text, opts.hanzi_styles, converter
-            )
+            cleaned_split_text = clean_entry_text(pmd, opts.hanzi_styles, converter)
 
             # Depending on the parameters given we will have more than one script type (traditional and simplified), we'll render an image for each
-            for script_type in cleaned_split_text:
+            for script_type_splits in cleaned_split_text:
                 # We'll unpack the result, the first part is the splits and the second is the name of the script, which we'll use for the manifest
-                splits, script_name = cleaned_split_text
+                splits, script_name = script_type_splits
                 # We split the articles by newlines, we will take an excerpt for each of these
-                for split in splits:
+                for split_num, split in enumerate(splits):
                     # If '\n\n' was encountered it will result in 0 length splits, we will skip these as they are useless
                     if len(split) == 0:
                         continue
@@ -289,10 +307,10 @@ def write_images(opts):
                     # We will audit each character against the font lest we get a "tofu", which is useless and even harmful to our application
                     for char in excerpt:
                         if char not in font_cmap:
-                            # If a character is not able to be rendered we will skip it
+                            # If a character is not able to be rendered we will skip the section altogether
                             # but before skipping it we'll register it in the error manifest
-                            manifest_df.loc[len(manifest_df)] = [
-                                excerpt,
+                            error_manifest_df.loc[len(manifest_df)] = [
+                                char,
                                 font_name,
                                 script_name,
                             ]
@@ -300,20 +318,21 @@ def write_images(opts):
 
                     # Otherwise we will render the character
                     # We'll calculate the required width for the image and add a little bit of wiggle room
-                    required_width = (len(excerpt) * opts.character_size) * 1.05
+                    required_width = ceil((len(excerpt) * opts.character_size) * 1.05)
+                    img_height = ceil(opts.character_size * 1.05)
                     img1 = Image.new(
-                        "RGB", (required_width, opts.character_size * 1.05), "white"
+                        "RGB", (required_width, img_height), "white"
                     )
                     draw1 = ImageDraw.Draw(img1)
                     draw1.text(
-                        (required_width / 2, opts.image_height / 2),
+                        (required_width / 2, img_height / 2),
                         text=excerpt,
                         font=font,
                         fill="black",
-                        anchor="lm",
+                        anchor="mm",
                         align="left",
                     )
-                    file_name = f"{excerpt}_{script_name}.png"
+                    file_name = f"{pid}_{split_num}_{script_name}_{font_name}.png"
                     img1.save(
                         os.path.join(
                             root,
@@ -329,6 +348,10 @@ def write_images(opts):
                         font_name,
                         script_name,
                     ]
+
+            #trial_counter -= 1
+            #if trial_counter < 0:
+            #    return
 
         # At the end we'll save our manifest df as a csv, this is important since this stores our ys for each X, the X being the image
         if not os.path.exists(
@@ -427,23 +450,10 @@ def main():
     )
 
     parser.add_argument(
-        "--save_traditional",
-        type=utils.str2bool,
-        default=False,
-        help="By default the data is pulled from traditional characters and converted into its simplified version, with the traditional version thrown away, if this is set to True it will not be thrown away",
-    )
-
-    parser.add_argument(
-        "--random_seed",
-        type=int,
-        default=21,
-        help="Random seed used for picking out snippets of text to render",
-    )
-
-    parser.add_argument(
-        "--hanzi_types",
+        "--hanzi_styles",
         type=str,
-        default="S",
+        nargs="+",
+        default=["S", "T"],
         help="Which hanzi types to include: S - Simplified, T - Traditional, both can be included in any order, and with any capitalization, any other letters will be ignored",
     )
 
@@ -452,6 +462,13 @@ def main():
         type=utils.str2bool,
         default=True,
         help="If True deletes all previously generated images in the destination folder",
+    )
+
+    parser.add_argument(
+        "--random_seed",
+        type=int,
+        default=21,
+        help="Random seed used for picking out snippets of text to render",
     )
 
     opts = parser.parse_args()
