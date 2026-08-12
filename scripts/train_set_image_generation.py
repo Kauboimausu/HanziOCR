@@ -38,7 +38,7 @@ def take_wiki_excerpt(wiki_entry, excerpt_min_length, excerpt_max_length, random
     # It is quite unlikely that the user has requested a string that is longer than
     # the length of the article, but just in case we'll check that it isn't
     # if the minimum length is longer than the article itself then we'll just skip this entry
-    if excerpt_min_length > len(wiki_entry):
+    if wiki_entry is None or excerpt_min_length > len(wiki_entry):
         return None
     elif excerpt_min_length == len(wiki_entry):
         return wiki_entry
@@ -257,7 +257,7 @@ def write_images(opts):
         )
         return
 
-    trial_counter = 5
+    # trial_counter = 5
     # We'll initialize our rng and traditional to simplified chinese converter
     random = Random(opts.random_seed)
     converter = opencc.OpenCC("t2s.json")
@@ -295,8 +295,6 @@ def write_images(opts):
                 # We split the articles by newlines, we will take an excerpt for each of these
                 for split_num, split in enumerate(splits):
                     # If '\n\n' was encountered it will result in 0 length splits, we will skip these as they are useless
-                    if len(split) == 0:
-                        continue
                     excerpt = take_wiki_excerpt(
                         split,
                         opts.snippet_length_range[0],
@@ -304,7 +302,11 @@ def write_images(opts):
                         random,
                     )
 
+                    if excerpt is None or len(excerpt) == 0:
+                        continue
+
                     # We will audit each character against the font lest we get a "tofu", which is useless and even harmful to our application
+                    renderable = True
                     for char in excerpt:
                         if char not in font_cmap:
                             # If a character is not able to be rendered we will skip the section altogether
@@ -314,43 +316,44 @@ def write_images(opts):
                                 font_name,
                                 script_name,
                             ]
-                            continue
+                            renderable = False
 
                     # Otherwise we will render the character
-                    # We'll calculate the required width for the image and add a little bit of wiggle room
-                    required_width = ceil((len(excerpt) * opts.character_size) * 1.05)
-                    img_height = ceil(opts.character_size * 1.05)
-                    img1 = Image.new(
-                        "RGB", (required_width, img_height), "white"
-                    )
-                    draw1 = ImageDraw.Draw(img1)
-                    draw1.text(
-                        (required_width / 2, img_height / 2),
-                        text=excerpt,
-                        font=font,
-                        fill="black",
-                        anchor="mm",
-                        align="left",
-                    )
-                    file_name = f"{pid}_{split_num}_{script_name}_{font_name}.png"
-                    img1.save(
-                        os.path.join(
-                            root,
-                            opts.data_folder,
-                            opts.save_location,
-                            file_name,
+                    # Before creating the image we'll see how much space we need to fit the text
+                    if renderable:
+                        left, top, right, bottom = font.getbbox(excerpt)
+                        # we'll calculate the required dimensions from the results, and we'll add a little wiggle room
+                        required_width = ceil(abs((right - left) + 2 * opts.width_padding))
+                        img_height = ceil(abs((bottom - top) + 2 * opts.height_padding))
+                        img1 = Image.new("RGB", (required_width, img_height), "white")
+                        draw1 = ImageDraw.Draw(img1)
+                        draw1.text(
+                            (opts.width_padding, img_height / 2),
+                            text=excerpt,
+                            font=font,
+                            fill="black",
+                            anchor="lm",
+                            align="left",
                         )
-                    )
+                        file_name = f"{pid}_{split_num}_{script_name}_{font_name}.png"
+                        img1.save(
+                            os.path.join(
+                                root,
+                                opts.data_folder,
+                                opts.save_location,
+                                file_name,
+                            )
+                        )
 
-                    manifest_df.loc[len(manifest_df)] = [
-                        file_name,
-                        excerpt,
-                        font_name,
-                        script_name,
-                    ]
+                        manifest_df.loc[len(manifest_df)] = [
+                            file_name,
+                            excerpt,
+                            font_name,
+                            script_name,
+                        ]
 
-            #trial_counter -= 1
-            #if trial_counter < 0:
+            # trial_counter -= 1
+            # if trial_counter < 0:
             #    return
 
         # At the end we'll save our manifest df as a csv, this is important since this stores our ys for each X, the X being the image
@@ -442,10 +445,24 @@ def main():
     )
 
     parser.add_argument(
+        "--width_padding",
+        type=int,
+        default="30",
+        help="Padding added on the sides of the image's borders to avoid text overflowing",
+    )
+
+    parser.add_argument(
+        "--height_padding",
+        type=int,
+        default=20,
+        help="Padding added on the top and bottom of the image's borders to avoid text overflowing",
+    )
+
+    parser.add_argument(
         "--snippet_length_range",
         type=int,
         nargs=2,
-        default=[1, 15],
+        default=[3, 15],
         help="Range of the length of the snippets to be picked, first number is the minimum (inclusive), the second is the maximum (inclusive)",
     )
 
