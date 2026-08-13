@@ -195,6 +195,7 @@ def clean_entry_text(wiki_entry, hanzi_styles, converter):
     wiki_entry = wiki_entry.replace("( ! )", "")
     wiki_entry = wiki_entry.replace("「?」", "")
     wiki_entry = wiki_entry.replace("( ? )", "")
+    wiki_entry = wiki_entry.replace("[io]", "")
     # wiki_entry = re.sub(r"( ! )|「!」", "!", wiki_entry)
     # wiki_entry = re.sub(r"( ? )|「?」", "!", wiki_entry)
 
@@ -308,10 +309,10 @@ def write_images(opts):
                     # We will audit each character against the font lest we get a "tofu", which is useless and even harmful to our application
                     renderable = True
                     for char in excerpt:
-                        if char not in font_cmap:
+                        if ord(char) not in font_cmap:
                             # If a character is not able to be rendered we will skip the section altogether
                             # but before skipping it we'll register it in the error manifest
-                            error_manifest_df.loc[len(manifest_df)] = [
+                            error_manifest_df.loc[len(error_manifest_df)] = [
                                 char,
                                 font_name,
                                 script_name,
