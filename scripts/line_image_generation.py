@@ -121,65 +121,6 @@ def load_wiki_dataset(opts):
         print(f"Dataset could not be loaded: {e}")
 
 
-def delete_images(opts):
-    """
-    If requested by the user, deletes all the hanzi images previously generated
-
-    Parameters
-    -----------
-    opts: argparse.Namespace
-        Parameters given by the user
-    """
-    # Source - https://stackoverflow.com/a/185941
-    # Posted by Nick Stinemates, modified by community. See post 'Timeline' for change history
-    # Retrieved 2026-07-08, License - CC BY-SA 4.0
-
-    root = utils.find_project_root()
-    imgs_folder = os.path.join(root, opts.data_folder, opts.save_location)
-    if not os.path.exists(imgs_folder):
-        os.makedirs(imgs_folder)
-    for filename in os.listdir(imgs_folder):
-        file_path = os.path.join(imgs_folder, filename)
-        try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)
-        except Exception as e:
-            print("Failed to delete %s. Reason: %s" % (file_path, e))
-
-    manifest_folder = os.path.join(root, opts.data_folder, opts.manifest_location)
-    for filename in os.listdir(manifest_folder):
-        file_path = os.path.join(manifest_folder, filename)
-        try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)
-        except Exception as e:
-            print("Failed to delete %s. Reason: %s" % (file_path, e))
-
-
-def get_fonts_list(opts) -> list[str]:
-    """
-    Returns the files stored in the fonts directory, that is, returns a list of all the fonts to be rendered
-
-    Parameters
-    ----------
-    opts: argparse.Namespace
-        Parameters given by the user
-
-    Returns
-    ----------
-    List of fonts stored in specified directory
-    """
-    root = utils.find_project_root()
-    try:
-        return os.listdir(os.path.join(root, opts.data_folder, opts.font_location))
-    except Exception as e:
-        raise Exception(f"Folder could not be found: {e}")
-
-
 def load_wikipedia_data(opts) -> Dataset:
     """
     Retrieves the dataset from the disk and returns it
@@ -305,11 +246,11 @@ def write_images(opts):
     error_manifest_df = pd.DataFrame(columns=["text", "font", "type"])
 
     # If the specified folder for the generated images doesn't already exist we'll create it
-    if not os.path.exists(os.path.join(root, opts.data_folder, opts.save_location)):
-        os.makedirs(os.path.join(root, opts.data_folder, opts.save_location))
+    if not os.path.exists(os.path.join(root, opts.data_folder, opts.img_save_location)):
+        os.makedirs(os.path.join(root, opts.data_folder, opts.img_save_location))
 
     # We'll get the list of saved fonts and iterate through them
-    fonts = get_fonts_list(opts)
+    fonts = utils.get_fonts_list(opts.data_folder, opts.font_location)
     # hanzi_df = get_hanzi_list(opts)
     wikipedia_ds = load_wikipedia_data(opts)
 
@@ -420,7 +361,7 @@ def write_images(opts):
                             os.path.join(
                                 root,
                                 opts.data_folder,
-                                opts.save_location,
+                                opts.img_save_location,
                                 file_name,
                             )
                         )
@@ -438,12 +379,12 @@ def write_images(opts):
 
         # At the end we'll save our manifest df as a csv, this is important since this stores our ys for each X, the X being the image
         if not os.path.exists(
-            os.path.join(root, opts.data_folder, opts.manifest_location)
+            os.path.join(root, opts.data_folder, opts.manifest_save_location)
         ):
-            os.makedirs(os.path.join(root, opts.data_folder, opts.manifest_location))
+            os.makedirs(os.path.join(root, opts.data_folder, opts.manifest_save_location))
         manifest_df.to_csv(
             os.path.join(
-                root, opts.data_folder, opts.manifest_location, opts.manifest_name
+                root, opts.data_folder, opts.manifest_save_location, opts.manifest_name
             ),
             index=False,
         )
@@ -452,7 +393,7 @@ def write_images(opts):
             os.path.join(
                 root,
                 opts.data_folder,
-                opts.manifest_location,
+                opts.manifest_save_location,
                 opts.error_manifest_name,
             ),
             index=False,
@@ -483,7 +424,7 @@ def main():
     )
 
     parser.add_argument(
-        "--save_location",
+        "--img_save_location",
         type=str,
         default="zh_text_imgs/",
         help="Directory in which to save the images with the rendered text lines",
@@ -497,9 +438,9 @@ def main():
     )
 
     parser.add_argument(
-        "--manifest_location",
+        "--manifest_save_location",
         type=str,
-        default="images_manifest/",
+        default="text_images_manifest/",
         help="Location in which to save the manifest file for the generated images",
     )
 
@@ -575,7 +516,7 @@ def main():
     )
 
     opts = parser.parse_args()
-    delete_images(opts)
+    utils.delete_images(opts.data_folder, opts.img_save_location, opts.manifest_save_location)
     write_images(opts)
 
 
