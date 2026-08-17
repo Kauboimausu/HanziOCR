@@ -142,33 +142,6 @@ def load_wikipedia_data(opts) -> Dataset:
     except Exception as e:
         print(f"File could not be found at given location: {e}")
 
-
-def get_hanzi_list(opts) -> pd.DataFrame:
-    """
-    Reads the csv in which the hanzis are stored and returns the dataframe
-
-    Parameters
-    ----------
-    opts: argparse.Namespace
-        Parameters given by the user
-
-    Returns
-    ---------
-    Pandas dataframe with the hanzi data
-    """
-    root = utils.find_project_root()
-    try:
-        hanzi_df = pd.read_csv(
-            os.path.join(
-                root, opts.data_folder, opts.hanzi_location, opts.hanzi_file_name
-            ),
-            index_col="codepoint",
-        )
-        return hanzi_df
-    except Exception as e:
-        print(f"File could not be found at given location: {e}")
-
-
 def clean_entry_text(wiki_entry, hanzi_styles, converter):
     """
     Removes garbage text from the wiki's entry. Also converts from traditional to simpliified, if need be
