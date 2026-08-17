@@ -7,8 +7,8 @@ from fontTools.ttLib import TTFont
 from datasets import load_from_disk, Dataset
 import opencc
 import re
-from random import Random
 from math import ceil
+import numpy as np
 
 
 def take_wiki_excerpt(wiki_entry, excerpt_min_length, excerpt_max_length, random):
@@ -42,11 +42,11 @@ def take_wiki_excerpt(wiki_entry, excerpt_min_length, excerpt_max_length, random
         return None
     elif excerpt_min_length == len(wiki_entry):
         return wiki_entry
-    excerpt_length = random.randint(
+    excerpt_length = random.integers(
         excerpt_min_length, min(excerpt_max_length, len(wiki_entry))
     )
 
-    start_pointer = random.randint(0, len(wiki_entry) - excerpt_length)
+    start_pointer = random.integers(0, len(wiki_entry) - excerpt_length)
 
     return wiki_entry[start_pointer : (start_pointer + excerpt_length)]
 
@@ -68,16 +68,16 @@ def is_hanzi(character):
         [
             start <= ord(character) <= end
             for start, end in [
-                (ord(u"\u3300"), ord(u"\u33ff")),
-                (ord(u"\ufe30"), ord(u"\ufe4f")),
-                (ord(u"\uf900"), ord(u"\ufaff")),
-                (ord(u"\U0002F800"), ord(u"\U0002fa1f")),
-                (ord(u"\u4e00"), ord(u"\u9fff")),
-                (ord(u"\u3400"), ord(u"\u4dbf")),
-                (ord(u"\U00020000"), ord(u"\U0002a6df")),
-                (ord(u"\U0002a700"), ord(u"\U0002b73f")),
-                (ord(u"\U0002b740"), ord(u"\U0002b81f")),
-                (ord(u"\U0002b820"), ord(u"\U0002ceaf")),
+                (ord("\u3300"), ord("\u33ff")),
+                (ord("\ufe30"), ord("\ufe4f")),
+                (ord("\uf900"), ord("\ufaff")),
+                (ord("\U0002f800"), ord("\U0002fa1f")),
+                (ord("\u4e00"), ord("\u9fff")),
+                (ord("\u3400"), ord("\u4dbf")),
+                (ord("\U00020000"), ord("\U0002a6df")),
+                (ord("\U0002a700"), ord("\U0002b73f")),
+                (ord("\U0002b740"), ord("\U0002b81f")),
+                (ord("\U0002b820"), ord("\U0002ceaf")),
             ]
         ]
     )
@@ -97,11 +97,12 @@ def get_excerpt_hanzi_proportion(excerpt):
     """
 
     total_hanzi = 0
-    for char in excerpt: 
+    for char in excerpt:
         if is_hanzi(char):
             total_hanzi += 1
 
     return (total_hanzi / len(excerpt)) * 100
+
 
 def load_wiki_dataset(opts):
     """
@@ -251,23 +252,21 @@ def clean_entry_text(wiki_entry, hanzi_styles, converter):
     # wiki_entry = re.sub(r"( ! )|「!」", "!", wiki_entry)
     # wiki_entry = re.sub(r"( ? )|「?」", "!", wiki_entry)
 
-    if ("S" in hanzi_styles or "s" in hanzi_styles) and (
-        "T" in hanzi_styles or "t" in hanzi_styles
-    ):
+    if 's' in hanzi_styles.lower() and 't' in hanzi_styles.lower():
         simplified_entry = converter.convert(wiki_entry)
         simplified_splits = simplified_entry.split("\n")
         traditional_splits = wiki_entry.split("\n")
 
-        return (simplified_splits, "simplified"), (traditional_splits, "traditional")
-    elif "S" in hanzi_styles:
+        return [(simplified_splits, "simplified"), (traditional_splits, "traditional")]
+    elif "s" in hanzi_styles.lower():
         simplified_entry = converter.convert(wiki_entry)
         simplified_splits = simplified_entry.split("\n")
 
-        return (simplified_splits, "simplified")
-    elif "T" in hanzi_styles:
+        return [(simplified_splits, "simplified")]
+    elif "t" in hanzi_styles.lower():
         traditional_splits = wiki_entry.split("\n")
 
-        return (traditional_splits, "traditional")
+        return [(traditional_splits, "traditional")]
 
 
 def write_images(opts):
@@ -304,7 +303,10 @@ def write_images(opts):
     # hanzi_df = get_hanzi_list(opts)
     wikipedia_ds = load_wikipedia_data(opts)
 
-    if "S" not in opts.hanzi_styles or "T" not in opts.hanzi_styles:
+    if (
+        's' not in opts.hanzi_styles.lower()
+        and 't' not in opts.hanzi_styles.lower()
+    ):
         print(
             "ERROR: Either 'S' (Simplified) or 'T' (Traditional) has to be included in the '--hanzi_styles' flag"
         )
@@ -312,11 +314,14 @@ def write_images(opts):
 
     # trial_counter = 5
     # We'll initialize our rng and traditional to simplified chinese converter
-    random = Random(opts.random_seed)
+    rng = np.random.default_rng(opts.random_seed)
     converter = opencc.OpenCC("t2s.json")
 
     # Weĺl load each font and iterate through our previously generated character list
     for font_name in fonts:
+        # reserved is the name for fonts that i dont want to render yet
+        if "reserved" in font_name:
+            continue
         try:
             font = ImageFont.truetype(
                 font=os.path.join(
@@ -332,9 +337,14 @@ def write_images(opts):
         except Exception as e:
             print(f"ERROR: Could not load font {e}")
 
-        print(len(wikipedia_ds))
+        # print(len(wikipedia_ds)) - 2,533,212
         # We'll iterate through each dataset entry
-        for wiki_page in wikipedia_ds:
+        random_entries = rng.choice(
+            len(wikipedia_ds), opts.pages_per_font, replace=False
+        )
+        font_subset = wikipedia_ds.select(random_entries)
+        for wiki_page in font_subset:
+            # for wiki_page in wikipedia_ds:
             # We'll obtain the parts of the page we need, we'll keep the page id for the manifest and the markdown for the text
             pid = wiki_page["pageid"]
             pmd = wiki_page["markdown"]
@@ -353,7 +363,7 @@ def write_images(opts):
                         split,
                         opts.snippet_length_range[0],
                         opts.snippet_length_range[1],
-                        random,
+                        rng,
                     )
 
                     if excerpt is None or len(excerpt) == 0:
@@ -484,6 +494,13 @@ def main():
     )
 
     parser.add_argument(
+        "--pages_per_font",
+        type=int,
+        default=5000,
+        help="How many pages to use to make images per font, note that each page likely renders more than one image",
+    )
+
+    parser.add_argument(
         "--manifest_name",
         type=str,
         default="manifest.csv",
@@ -530,14 +547,13 @@ def main():
         "--min_hanzi_proportion",
         type=int,
         default=70,
-        help="The minimum percentage of hanzi that an excerpt is required to have in order to be rendered, accepted as a percentage (out of a hundred)"
+        help="The minimum percentage of hanzi that an excerpt is required to have in order to be rendered, accepted as a percentage (out of a hundred)",
     )
 
     parser.add_argument(
         "--hanzi_styles",
         type=str,
-        nargs="+",
-        default=["S", "T"],
+        default='S',
         help="Which hanzi types to include: S - Simplified, T - Traditional, both can be included in any order, and with any capitalization, any other letters will be ignored",
     )
 
