@@ -135,19 +135,29 @@ def delete_images(opts):
     # Retrieved 2026-07-08, License - CC BY-SA 4.0
 
     root = utils.find_project_root()
-    if opts.delete_previous_images:
-        folder = os.path.join(root, opts.data_folder, opts.save_location)
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-        for filename in os.listdir(folder):
-            file_path = os.path.join(folder, filename)
-            try:
-                if os.path.isfile(file_path) or os.path.islink(file_path):
-                    os.unlink(file_path)
-                elif os.path.isdir(file_path):
-                    shutil.rmtree(file_path)
-            except Exception as e:
-                print("Failed to delete %s. Reason: %s" % (file_path, e))
+    imgs_folder = os.path.join(root, opts.data_folder, opts.save_location)
+    if not os.path.exists(imgs_folder):
+        os.makedirs(imgs_folder)
+    for filename in os.listdir(imgs_folder):
+        file_path = os.path.join(imgs_folder, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print("Failed to delete %s. Reason: %s" % (file_path, e))
+
+    manifest_folder = os.path.join(root, opts.data_folder, opts.manifest_location)
+    for filename in os.listdir(manifest_folder):
+        file_path = os.path.join(manifest_folder, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print("Failed to delete %s. Reason: %s" % (file_path, e))
 
 
 def get_fonts_list(opts) -> list[str]:
@@ -558,13 +568,6 @@ def main():
     )
 
     parser.add_argument(
-        "--delete_previous_images",
-        type=utils.str2bool,
-        default=True,
-        help="If True deletes all previously generated images in the destination folder",
-    )
-
-    parser.add_argument(
         "--random_seed",
         type=int,
         default=21,
@@ -572,8 +575,7 @@ def main():
     )
 
     opts = parser.parse_args()
-    if opts.delete_previous_images:
-        delete_images(opts)
+    delete_images(opts)
     write_images(opts)
 
 
