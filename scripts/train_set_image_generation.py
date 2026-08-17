@@ -51,6 +51,58 @@ def take_wiki_excerpt(wiki_entry, excerpt_min_length, excerpt_max_length, random
     return wiki_entry[start_pointer : (start_pointer + excerpt_length)]
 
 
+# Source - https://stackoverflow.com/a/37311125
+# Posted by alvas, modified by community. See post 'Timeline' for change history
+# Retrieved 2026-08-17, License - CC BY-SA 3.0
+
+
+def is_hanzi(character):
+    """ "
+    Checks whether character is CJK.
+
+    :param character: The character that needs to be checked.
+    :type character: char
+    :return: bool
+    """
+    return any(
+        [
+            start <= ord(character) <= end
+            for start, end in [
+                (ord(u"\u3300"), ord(u"\u33ff")),
+                (ord(u"\ufe30"), ord(u"\ufe4f")),
+                (ord(u"\uf900"), ord(u"\ufaff")),
+                (ord(u"\U0002F800"), ord(u"\U0002fa1f")),
+                (ord(u"\u4e00"), ord(u"\u9fff")),
+                (ord(u"\u3400"), ord(u"\u4dbf")),
+                (ord(u"\U00020000"), ord(u"\U0002a6df")),
+                (ord(u"\U0002a700"), ord(u"\U0002b73f")),
+                (ord(u"\U0002b740"), ord(u"\U0002b81f")),
+                (ord(u"\U0002b820"), ord(u"\U0002ceaf")),
+            ]
+        ]
+    )
+
+
+def get_excerpt_hanzi_proportion(excerpt):
+    """
+    Returns the percentage of hanzi to total characters in a given string
+    Parameters
+    -----------
+    excerpt: str
+        The string to be measured
+    Returns
+    -----------
+    percentage: float
+        the percentage of hanzi to total characters in the excerpt
+    """
+
+    total_hanzi = 0
+    for char in excerpt: 
+        if is_hanzi(char):
+            total_hanzi += 1
+
+    return (total_hanzi / len(excerpt)) * 100
+
 def load_wiki_dataset(opts):
     """
     Loads the dataset from the indicated disk location so the
@@ -280,6 +332,7 @@ def write_images(opts):
         except Exception as e:
             print(f"ERROR: Could not load font {e}")
 
+        print(len(wikipedia_ds))
         # We'll iterate through each dataset entry
         for wiki_page in wikipedia_ds:
             # We'll obtain the parts of the page we need, we'll keep the page id for the manifest and the markdown for the text
@@ -306,6 +359,10 @@ def write_images(opts):
                     if excerpt is None or len(excerpt) == 0:
                         continue
 
+                    hanzi_perc = get_excerpt_hanzi_proportion(excerpt)
+                    if hanzi_perc < opts.min_hanzi_proportion:
+                        continue
+
                     # We will audit each character against the font lest we get a "tofu", which is useless and even harmful to our application
                     renderable = True
                     for char in excerpt:
@@ -324,7 +381,9 @@ def write_images(opts):
                     if renderable:
                         left, top, right, bottom = font.getbbox(excerpt)
                         # we'll calculate the required dimensions from the results, and we'll add a little wiggle room
-                        required_width = ceil(abs((right - left) + 2 * opts.width_padding))
+                        required_width = ceil(
+                            abs((right - left) + 2 * opts.width_padding)
+                        )
                         img_height = ceil(abs((bottom - top) + 2 * opts.height_padding))
                         img1 = Image.new("RGB", (required_width, img_height), "white")
                         draw1 = ImageDraw.Draw(img1)
@@ -465,6 +524,13 @@ def main():
         nargs=2,
         default=[3, 15],
         help="Range of the length of the snippets to be picked, first number is the minimum (inclusive), the second is the maximum (inclusive)",
+    )
+
+    parser.add_argument(
+        "--min_hanzi_proportion",
+        type=int,
+        default=70,
+        help="The minimum percentage of hanzi that an excerpt is required to have in order to be rendered, accepted as a percentage (out of a hundred)"
     )
 
     parser.add_argument(
