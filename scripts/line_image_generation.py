@@ -142,6 +142,7 @@ def load_wikipedia_data(opts) -> Dataset:
     except Exception as e:
         print(f"File could not be found at given location: {e}")
 
+
 def clean_entry_text(wiki_entry, hanzi_styles, converter):
     """
     Removes garbage text from the wiki's entry. Also converts from traditional to simpliified, if need be

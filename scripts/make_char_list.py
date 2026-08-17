@@ -69,7 +69,7 @@ def main():
     parser.add_argument(
         "--hsk_list_folder",
         type=str,
-        default="old_hsk_tsvs/",
+        default="HSK_vocab_lists/",
         help="Folder with the HSK words to be read",
     )
 
@@ -84,7 +84,7 @@ def main():
     parser.add_argument(
         "--save_location",
         type=str,
-        default="characters/",
+        default="hsk_characters/",
         help="Directory in which to save the csv with the unique characters",
     )
 
