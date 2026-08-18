@@ -94,7 +94,7 @@ def write_images(opts):
         except Exception as e:
             print(f"ERROR: Could not load font {e}")
 
-        for index, row in hanzi_df.iterrows():
+        for _, row in hanzi_df.iterrows():
             for script in opts.hanzi_styles:
                 if script.lower() == "s":
                     script_name = "simplified"
