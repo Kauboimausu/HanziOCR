@@ -93,7 +93,7 @@ def write_images(opts):
             font_cmap = tfont.getBestCmap()
         except Exception as e:
             print(f"ERROR: Could not load font {e}")
-
+        print(f"Generating images for font {font_name}")
         for _, row in hanzi_df.iterrows():
             for script in opts.hanzi_styles:
                 if script.lower() == "s":
@@ -141,6 +141,7 @@ def write_images(opts):
                     font_name,
                     script_name,
                 ]
+        print("Done")
 
         # At the end we'll save our manifest df as a csv, this is important since this stores our ys for each X, the X being the image
         if not os.path.exists(
