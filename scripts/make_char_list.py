@@ -77,7 +77,8 @@ def main():
         "--hsk_level",
         type=str,
         nargs="+",
-        default=["HSK 1.tsv"],
+        #default=["HSK 1.tsv"],
+        default=["HSK 1.tsv", "HSK 2.tsv", "HSK 3.tsv", "HSK 4.tsv", "HSK 5.tsv", "HSK 6.tsv", "HSK 7-9.tsv"],
         help="In the given folder, which files are to be added to the set",
     )
 

@@ -230,21 +230,21 @@ def main():
     parser.add_argument(
         "--character_size",
         type=int,
-        default=60,
+        default=100,
         help="Character size, in pixels, characters are more or less squares in their dimensions",
     )
 
     parser.add_argument(
         "--width_padding",
         type=int,
-        default="30",
+        default=50,
         help="Padding added on the sides of the image's borders to avoid text overflowing",
     )
 
     parser.add_argument(
         "--height_padding",
         type=int,
-        default=20,
+        default=50,
         help="Padding added on the top and bottom of the image's borders to avoid text overflowing",
     )
 
