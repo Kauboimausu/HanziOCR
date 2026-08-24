@@ -256,14 +256,6 @@ def main():
     )
 
     parser.add_argument(
-        "--snippet_length_range",
-        type=int,
-        nargs=2,
-        default=[3, 15],
-        help="Range of the length of the snippets to be picked, first number is the minimum (inclusive), the second is the maximum (inclusive)",
-    )
-
-    parser.add_argument(
         "--hanzi_styles",
         type=str,
         default="S",
@@ -272,7 +264,7 @@ def main():
 
     opts = parser.parse_args()
     utils.delete_images(
-        opts.data_folder, opts.font_location, opts.manifest_save_location
+        opts.data_folder, opts.image_save_location, opts.manifest_save_location
     )
     write_images(opts)
 

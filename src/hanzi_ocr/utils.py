@@ -71,23 +71,23 @@ def delete_images(data_folder, image_location, manifest_location):
     imgs_folder = os.path.join(root, data_folder, image_location)
     if not os.path.exists(imgs_folder):
         os.makedirs(imgs_folder)
-        for filename in os.listdir(imgs_folder):
-            file_path = os.path.join(imgs_folder, filename)
-            try:
-                if os.path.isfile(file_path) or os.path.islink(file_path):
-                    os.unlink(file_path)
-                elif os.path.isdir(file_path):
-                    shutil.rmtree(file_path)
-            except Exception as e:
-                print("Failed to delete %s. Reason: %s" % (file_path, e))
+    for filename in os.listdir(imgs_folder):
+        file_path = os.path.join(imgs_folder, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print("Failed to delete %s. Reason: %s" % (file_path, e))
 
-                manifest_folder = os.path.join(root, data_folder, manifest_location)
-                for filename in os.listdir(manifest_folder):
-                    file_path = os.path.join(manifest_folder, filename)
-                    try:
-                        if os.path.isfile(file_path) or os.path.islink(file_path):
-                            os.unlink(file_path)
-                        elif os.path.isdir(file_path):
-                            shutil.rmtree(file_path)
-                    except Exception as e:
-                        print("Failed to delete %s. Reason: %s" % (file_path, e))
+            manifest_folder = os.path.join(root, data_folder, manifest_location)
+            for filename in os.listdir(manifest_folder):
+                file_path = os.path.join(manifest_folder, filename)
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                except Exception as e:
+                    print("Failed to delete %s. Reason: %s" % (file_path, e))
