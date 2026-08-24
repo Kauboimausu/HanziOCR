@@ -55,9 +55,11 @@ def write_images(opts):
         return
 
     # We want to generate a manifest to keep track of what character, font, size, etc is being generated on each file.
-    manifest_df = pd.DataFrame(columns=["file name", "text", "font", "type"])
+    manifest_df = pd.DataFrame(
+        columns=["file name", "codepoint", "text", "font", "type"]
+    )
     # We'll also generate a manifest for the characters that were not able to be rendered
-    error_manifest_df = pd.DataFrame(columns=["text", "font", "type"])
+    error_manifest_df = pd.DataFrame(columns=["codepoint", "text", "font", "type"])
     manifest_arr = []
     error_manifest_arr = []
 
@@ -131,20 +133,19 @@ def write_images(opts):
                         file_name,
                     )
                 )
-
-                manifest_arr = manifest_arr + [file_name, char, font_name, script_name]
                 manifest_df.loc[len(manifest_df)] = [
-                   file_name,
-                   char,
-                   font_name,
-                   script_name,
+                    file_name,
+                    ord(char),
+                    char,
+                    font_name,
+                    script_name,
                 ]
             else:
-                error_manifest_arr = error_manifest_arr + [char, font_name, script_name]
                 error_manifest_df.loc[len(error_manifest_df)] = [
-                   char,
-                   font_name,
-                   script_name,
+                    ord(char),
+                    char,
+                    font_name,
+                    script_name,
                 ]
         print("Done")
 
@@ -152,9 +153,7 @@ def write_images(opts):
     if not os.path.exists(
         os.path.join(root, opts.data_folder, opts.manifest_save_location)
     ):
-        os.makedirs(
-            os.path.join(root, opts.data_folder, opts.manifest_save_location)
-        )
+        os.makedirs(os.path.join(root, opts.data_folder, opts.manifest_save_location))
     manifest_df.to_csv(
         os.path.join(
             root,
