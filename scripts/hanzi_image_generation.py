@@ -5,6 +5,7 @@ from hanzi_ocr import utils
 import pandas as pd
 from fontTools.ttLib import TTFont
 from math import ceil
+import numpy as np
 
 
 def get_hanzi_list(opts) -> pd.DataFrame:
@@ -57,6 +58,8 @@ def write_images(opts):
     manifest_df = pd.DataFrame(columns=["file name", "text", "font", "type"])
     # We'll also generate a manifest for the characters that were not able to be rendered
     error_manifest_df = pd.DataFrame(columns=["text", "font", "type"])
+    manifest_arr = []
+    error_manifest_arr = []
 
     # If the specified folder for the generated images doesn't already exist we'll create it
     if not os.path.exists(
@@ -92,7 +95,7 @@ def write_images(opts):
             )
             font_cmap = tfont.getBestCmap()
         except Exception as e:
-            print(f"ERROR: Could not load font {e}")
+            print(f"ERROR: Could not load font, reason: {e}")
         print(f"Generating images for font {font_name}")
         for _, row in hanzi_df.iterrows():
             for script in opts.hanzi_styles:
@@ -129,44 +132,48 @@ def write_images(opts):
                     )
                 )
 
+                manifest_arr = manifest_arr + [file_name, char, font_name, script_name]
                 manifest_df.loc[len(manifest_df)] = [
-                    file_name,
-                    char,
-                    font_name,
-                    script_name,
+                   file_name,
+                   char,
+                   font_name,
+                   script_name,
                 ]
             else:
+                error_manifest_arr = error_manifest_arr + [char, font_name, script_name]
                 error_manifest_df.loc[len(error_manifest_df)] = [
-                    char,
-                    font_name,
-                    script_name,
+                   char,
+                   font_name,
+                   script_name,
                 ]
         print("Done")
 
-        # At the end we'll save our manifest df as a csv, this is important since this stores our ys for each X, the X being the image
-        if not os.path.exists(
+    # At the end we'll save our manifest df as a csv, this is important since this stores our ys for each X, the X being the image
+    if not os.path.exists(
+        os.path.join(root, opts.data_folder, opts.manifest_save_location)
+    ):
+        os.makedirs(
             os.path.join(root, opts.data_folder, opts.manifest_save_location)
-        ):
-            os.makedirs(os.path.join(root, opts.data_folder, opts.manifest_save_location))
-            manifest_df.to_csv(
-                os.path.join(
-                    root,
-                    opts.data_folder,
-                    opts.manifest_save_location,
-                    opts.manifest_name,
-                ),
-                index=False,
-            )
-            # We will also save our error manifest, this tells us which characters were not able to be rendered with a particular font, we'll save it in the same location as the previous one, but with a different name of course
-            error_manifest_df.to_csv(
-                os.path.join(
-                    root,
-                    opts.data_folder,
-                    opts.manifest_save_location,
-                    opts.error_manifest_name,
-                ),
-                index=False,
-            )
+        )
+    manifest_df.to_csv(
+        os.path.join(
+            root,
+            opts.data_folder,
+            opts.manifest_save_location,
+            opts.manifest_name,
+        ),
+        index=False,
+    )
+    # We will also save our error manifest, this tells us which characters were not able to be rendered with a particular font, we'll save it in the same location as the previous one, but with a different name of course
+    error_manifest_df.to_csv(
+        os.path.join(
+            root,
+            opts.data_folder,
+            opts.manifest_save_location,
+            opts.error_manifest_name,
+        ),
+        index=False,
+    )
 
 
 def main():
@@ -196,7 +203,7 @@ def main():
         "--hanzi_file_name",
         type=str,
         default="characters.csv",
-        help="Name of the file containing the hanzi character list"
+        help="Name of the file containing the hanzi character list",
     )
 
     parser.add_argument(
