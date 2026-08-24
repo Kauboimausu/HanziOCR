@@ -1,4 +1,5 @@
 import torch
+import os
 
 def evaluate(device, model, test_batches, metric):
     metric.reset
@@ -9,8 +10,8 @@ def evaluate(device, model, test_batches, metric):
 
         return metric.compute().item()
 
-def train_with_early_stopping(device, model, train_loader, valid_loader, criterion, metric, optimizer, scheduler, epochs=100, patience=10):
-    checkpoint_path = "checkpoint.pt"
+def train_with_early_stopping(device, model, train_loader, valid_loader, criterion, metric, optimizer, scheduler, checkpoint_folder, epochs=100, patience=10):
+    checkpoint_path = os.path.join(checkpoint_folder, "checkpoint.pt")
 
     best_valid_metric = 0.0
     epochs_without_improvement = 0
@@ -57,4 +58,4 @@ def train_with_early_stopping(device, model, train_loader, valid_loader, criteri
                 break
 
             model.load_state_dict(torch.load(checkpoint_path))
-            return model, history
+            return history
