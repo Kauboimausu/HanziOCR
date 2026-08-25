@@ -15,9 +15,18 @@ dependencies = [
     "scipy",
     "fonttools",
     "datasets",
-    "opencc"
+    "opencc",
+    "albumentations>=1.4.18",
+    "torchmetrics>=1.5.2",
+    "scikit-image>=0.26.0",
 ]
 
-requires-python = ">= 3.8"
+requires-python = ">= 3.12"
 description = "An OCR project for Chinese characters (Hanzi)"
 readme = "README.md"
+
+[dependency-groups]
+dev = [
+    "jupyter>=1.1.1",
+    "matplotlib>=3.7.5",
+]
