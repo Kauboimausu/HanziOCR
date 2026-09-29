@@ -1,18 +1,21 @@
 import os
 import argparse
+
 import pandas as pd
-import torch.optim as optims
-from hanzi_ocr.HMNIST import HMNISTModel
-from hanzi_ocr.train_nn import train_with_early_stopping
 import torchmetrics
-from torch.nn import CrossEntropyLoss
 import torch
-from src.hanzi_ocr import utils
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
-from src.hanzi_ocr.prepare_imgs import SynthethicHanziDataset
+
+from hanzi_ocr.HMNIST import HMNISTModel
+from hanzi_ocr.train_nn import train_with_early_stopping
 from src.hanzi_ocr import utils
+from hanzi_ocr.SyntheticHanziDataset import SynthethicHanziDataset
+
+import torch.optim as optims
+from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader
+from torch.optim.lr_scheduler import OneCycleLR, ReduceLROnPlateau
 
 
 def get_device():
@@ -41,7 +44,7 @@ def train_model(opts):
 
     model = HMNISTModel(num_classes).to(device)
 
-    match optimizer.lower():
+    match opts.optimizer.lower():
         case "adam":
             optimizer = optims.Adam(
                 params=model.parameters(), lr=opts.lr, betas=(0.9, 0.999)
@@ -57,7 +60,7 @@ def train_model(opts):
                 params=model.parameters(), nesterov=False, momentum=0.9, lr=opts.lr
             )
 
-    match metric.lower():
+    match opts.metric.lower():
         case "accuracy":
             metric = torchmetrics.Accuracy(
                 task="multiclass", num_classes=num_classes
@@ -72,6 +75,15 @@ def train_model(opts):
             ).to(device)
 
     criterion = CrossEntropyLoss()
+    
+    match opts.scheduler.lower():
+        case "performance":
+            scheduler = ReduceLROnPlateau(optimizer, mode="max")
+        case "1cycle": 
+            scheduler = OneCycleLR(optimizer, max_lr=0.5)
+        case _: 
+            scheduler = None
+        
 
     root = utils.find_project_root()
 
@@ -120,10 +132,11 @@ def train_model(opts):
         augmentation_pipeline=None,
     )
     
-    train_loader = DataLoader(train_ds, opts.batch_size, shuffle=True)
-    valid_loader = DataLoader(valid_ds, opts.batch_size, shuffle=False)
-
     rng = torch.Generator().manual_seed(opts.random_seed)
+    train_loader = DataLoader(train_ds, opts.batch_size, shuffle=True, generator=rng)
+    valid_loader = DataLoader(valid_ds, opts.batch_size, shuffle=False)
+    
+
 
     train_with_early_stopping(
         device,
@@ -133,7 +146,7 @@ def train_model(opts):
         criterion,
         metric,
         optimizer,
-        None,
+        scheduler,
         opts.epochs,
         opts.patience,
     )

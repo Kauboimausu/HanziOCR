@@ -30,4 +30,5 @@ readme = "README.md"
 dev = [
     "jupyter>=1.1.1",
     "matplotlib>=3.7.5",
+    "scikit-learn>=1.9.1",
 ]
