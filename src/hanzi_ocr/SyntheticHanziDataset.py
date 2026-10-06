@@ -4,13 +4,11 @@ from torch.utils.data import Dataset
 import pandas as pd
 import torch
 import cv2
-from sklearn.preprocessing import LabelEncoder
 
 def plot_image(image, char):
     """Plots the image along with the character it displays"""
     plt.title(char)
-    # plt.imshow(image.permute(1, 2, 0))
-    plt.imshow(image, cmap="gray", vmin=0, vmax=255)
+    plt.imshow(image, cmap="gray")
     plt.axis("off")
     plt.show()
     
@@ -22,6 +20,7 @@ class SynthethicHanziDataset(Dataset):
         csv_file,
         img_dir,
         split,
+        le,
         validation_fonts,
         normalization_pipeline,
         augmentation_pipeline=None,
@@ -35,6 +34,8 @@ class SynthethicHanziDataset(Dataset):
             Path to the directory in which the images are stored
         split: ["val", "train"]
             The split of the data to be returned
+        le: sklearn.preprocessing.LabelEncoder
+            Label encoder trained with all the classes
         validation_fonts: list
             List of the names of the fonts that are to be used for validation, and therefore excluded from training
         augmentation_pipeline:
@@ -47,15 +48,13 @@ class SynthethicHanziDataset(Dataset):
 
         self.split = split
         if split.lower() == "train":
-            self.hanzi_df = hanzi_df[hanzi_df["font"] not in validation_fonts]
+            self.hanzi_df = hanzi_df[~hanzi_df["font"].isin(validation_fonts)]
         elif split.lower() == "valid":
-            self.hanzi_df = hanzi_df[hanzi_df["font"] in validation_fonts]
+            self.hanzi_df = hanzi_df[hanzi_df["font"].isin(validation_fonts)]
         self.img_dir = img_dir
+        self.le = le
         self.augmentation_pipeline = augmentation_pipeline
         self.normalization_pipeline = normalization_pipeline
-        unique_vals = self.hanzi_df["codepoint"].unique()
-        self.label_encoder = LabelEncoder()
-        self.label_encoder.fit(self.hanzi_df["codepoint"])
         self.validation_fonts = validation_fonts
         
 
@@ -77,6 +76,6 @@ class SynthethicHanziDataset(Dataset):
             image = self.augmentation_pipeline(image=image)["image"]  # albumentations
 
         image = self.normalization_pipeline(image=image)["image"]
-        encoded_class = self.label_encoder.transform([char_codepoint])
+        encoded_class = self.le.transform([char_codepoint])
 
         return image, encoded_class[0]

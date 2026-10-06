@@ -1,12 +1,13 @@
 import torch
 import os
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import ReduceLROnPlateau, OneCycleLR
 import matplotlib.pyplot as plt
 import numpy as np
 
-def plot_training_history(history):
+
+def plot_training_history(history, figure_save_location):
     n_epochs = len(history["train_losses"])
-    
+
     plt.rc("font", size=14)
     plt.rc("axes", labelsize=14, titlesize=14)
     plt.rc("legend", fontsize=14)
@@ -23,7 +24,8 @@ def plot_training_history(history):
     plt.legend()
     plt.grid()
 
-    plt.show()
+    plt.savefig(os.path.join(figure_save_location))
+
 
 def evaluate(device, model, test_batches, metric):
     model.eval()
@@ -46,11 +48,10 @@ def train_with_early_stopping(
     metric,
     optimizer,
     scheduler,
-    experiment_name,
+    checkpoint_path,
     epochs=100,
     patience=10,
 ):
-    checkpoint_path = os.path.join(experiment_name, "best_weights.pt")
 
     best_valid_metric = 0.0
     epochs_without_improvement = 0
@@ -69,34 +70,37 @@ def train_with_early_stopping(
             X_batch, y_batch = X_batch.to(device), y_batch.to(device)
             preds = model(X_batch)
             loss = criterion(preds, y_batch)
-            total_loss += loss
+            total_loss += loss.item()
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
             metric.update(preds, y_batch)
 
-            total_train_loss = total_loss / len(train_loader)
-            train_metric = metric.compute().item()
-            valid_metric = evaluate(device, model, valid_loader, metric)
-
-            history["train_losses"].append(total_train_loss)
-            history["train_metrics"].append(train_metric)
-            history["valid_metrics"].append(valid_metric)
-
-            if isinstance(scheduler, ReduceLROnPlateau):
-                scheduler.step(valid_metric)
-            else:
+            if isinstance(scheduler, OneCycleLR):
                 scheduler.step()
 
-            if valid_metric >= best_valid_metric:
-                epochs_without_improvement = 0
-                best_valid_metric = valid_metric
-                torch.save(model.state_dict(), checkpoint_path)
-            elif epochs_without_improvement < patience:
-                patience += 1
-            else:
-                print(f"Out of patience, {epochs_without_improvement} without improvement, stopping training at epoch {epoch}")
-                break
+        total_train_loss = total_loss / len(train_loader)
+        train_metric = metric.compute().item()
+        valid_metric = evaluate(device, model, valid_loader, metric)
 
-            model.load_state_dict(torch.load(checkpoint_path))
-            return history
+        history["train_losses"].append(total_train_loss)
+        history["train_metrics"].append(train_metric)
+        history["valid_metrics"].append(valid_metric)
+
+        if isinstance(scheduler, ReduceLROnPlateau):
+            scheduler.step(valid_metric)
+
+        if valid_metric >= best_valid_metric:
+            epochs_without_improvement = 0
+            best_valid_metric = valid_metric
+            torch.save(model.state_dict(), checkpoint_path)
+        elif epochs_without_improvement < patience:
+            epochs_without_improvement += 1
+        else:
+            print(
+                f"Out of patience, {epochs_without_improvement} without improvement, stopping training at epoch {epoch}"
+            )
+            break
+
+    model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+    return history

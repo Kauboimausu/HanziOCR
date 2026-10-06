@@ -53,7 +53,7 @@ class HMNISTModel(Module):
 
     def test_shape(self):
         with torch.no_grad():
-            X = torch.randn(size=(2, 3, 64, 64))
+            X = torch.randn(size=(2, 1, 64, 64))
             print(f"Initial shape: {X.shape}")
             for mod_name, mod in self.named_children():
                 X = mod(X)
