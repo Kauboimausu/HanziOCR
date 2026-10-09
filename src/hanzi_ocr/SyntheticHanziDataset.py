@@ -45,6 +45,8 @@ class SynthethicHanziDataset(Dataset):
         """
 
         hanzi_df = pd.read_csv(csv_file)
+        
+        validation_fonts = [(font + ".ttf").lower() for font in validation_fonts]
 
         self.split = split
         if split.lower() == "train":

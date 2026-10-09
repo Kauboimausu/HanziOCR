@@ -98,7 +98,7 @@ def train_model(opts):
             metric = torchmetrics.F1Score(
                 task="multiclass", num_classes=num_classes
             ).to(device)
-        case "f1_macro":
+        case "f1 macro":
             metric = torchmetrics.F1Score(
                 task="multiclass", num_classes=num_classes, average="macro"
             ).to(device)
@@ -185,21 +185,21 @@ def main():
         "--optimizer",
         type=str,
         default="AdamW",
-        help="The name of the optimizer that will be used during training",
+        help="The name of the optimizer that will be used during training, one of 'Adam', 'AdamW', 'NAG', or 'Momentum'",
     )
     
     parser.add_argument(
         "--scheduler",
         type=str,
         default="None",
-        help="The type of scheduler that will be used during training"
+        help="The type of scheduler that will be used during training, one of 'Performance', 'OneCycle', or 'None'"
     )
 
     parser.add_argument(
         "--metric",
         type=str,
-        default="f1_macro",
-        help="The name of the metric that will be used for validation and early stopping",
+        default="accuracy",
+        help="The name of the metric that will be used for validation and early stopping, one of 'Accuracy', 'F1', 'F1 Macro'",
     )
 
     parser.add_argument(
@@ -270,7 +270,7 @@ def main():
         type=str,
         nargs="+",
         required=True,
-        help="The fonts that are to be used for validation during training",
+        help="The fonts that are to be used for validation during training, without extension and insensitive to capitalization",
     )
 
     parser.add_argument(
