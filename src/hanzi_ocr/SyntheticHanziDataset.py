@@ -5,13 +5,13 @@ import pandas as pd
 import torch
 import cv2
 
+
 def plot_image(image, char):
     """Plots the image along with the character it displays"""
     plt.title(char)
     plt.imshow(image, cmap="gray")
     plt.axis("off")
     plt.show()
-    
 
 class SynthethicHanziDataset(Dataset):
 
@@ -40,25 +40,31 @@ class SynthethicHanziDataset(Dataset):
             List of the names of the fonts that are to be used for validation, and therefore excluded from training
         augmentation_pipeline:
             Stochastic data augmentation pipeline for training
-        normalization_pipeline: 
+        normalization_pipeline:
             Data standarization pipeline for the images, resizing, normalization, etc
         """
 
         hanzi_df = pd.read_csv(csv_file)
         
-        validation_fonts = [(font + ".ttf").lower() for font in validation_fonts]
+        font_stem = lambda name: os.path.splitext(name)[0].lower()
+        
+        validation_fonts = [font_stem(font) for font in validation_fonts]
+        in_validation = hanzi_df["font"].map(font_stem).isin(validation_fonts)
 
         self.split = split
         if split.lower() == "train":
-            self.hanzi_df = hanzi_df[~hanzi_df["font"].isin(validation_fonts)]
+            self.hanzi_df = hanzi_df[~in_validation]
+            if len(self.hanzi_df) == 0:
+                raise ValueError("There are no samples in the train set")
         elif split.lower() == "valid":
-            self.hanzi_df = hanzi_df[hanzi_df["font"].isin(validation_fonts)]
+            self.hanzi_df = hanzi_df[in_validation]
+            if len(self.hanzi_df) == 0:
+                raise ValueError("There are no samples in the validation set")
         self.img_dir = img_dir
         self.le = le
         self.augmentation_pipeline = augmentation_pipeline
         self.normalization_pipeline = normalization_pipeline
         self.validation_fonts = validation_fonts
-        
 
     def __len__(self):
         return len(self.hanzi_df)

@@ -59,7 +59,7 @@ def train_model(opts):
     json_save_path = os.path.join(model_save_location, "le.json")
     
     with open(json_save_path, "w") as jsonfile:
-        json.dump(le.classes.to_list(), jsonfile, indent=4)
+        json.dump(le.classes_.tolist(), jsonfile, indent=4)
     
 
     imgs_folder_path = os.path.join(root, opts.data_folder, opts.imgs_folder)
@@ -248,7 +248,7 @@ def main():
         "--imgs_folder",
         type=str,
         default="hanzi_imgs",
-        help="Folder in which the synthtic hanzi images are stored",
+        help="Folder in which the synthetic hanzi images are stored",
     )
 
     parser.add_argument(
@@ -270,7 +270,7 @@ def main():
         type=str,
         nargs="+",
         required=True,
-        help="The fonts that are to be used for validation during training, without extension and insensitive to capitalization",
+        help="The fonts that are to be used for validation during training, insensitive to capitalization, with or without extension",
     )
 
     parser.add_argument(
