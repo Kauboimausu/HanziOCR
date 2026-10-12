@@ -104,23 +104,6 @@ def get_excerpt_hanzi_proportion(excerpt):
     return (total_hanzi / len(excerpt)) * 100
 
 
-def load_wiki_dataset(opts):
-    """
-    Loads the dataset from the indicated disk location so the
-
-    Parameters
-    ------------
-    opts: argparse.Namespace
-        Parameters given by the user
-    """
-    root = utils.find_project_root()
-    try:
-        ds = load_from_disk(os.path.join(root, opts.data_folder, opts.wiki_ds_data))
-        return ds
-    except Exception as e:
-        print(f"Dataset could not be loaded: {e}")
-
-
 def load_wikipedia_data(opts) -> Dataset:
     """
     Retrieves the dataset from the disk and returns it
