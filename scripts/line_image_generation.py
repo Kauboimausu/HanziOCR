@@ -243,7 +243,7 @@ def write_images(opts):
             )
             font_cmap = tfont.getBestCmap()
         except Exception as e:
-            print(f"ERROR: Could not load font {e}")
+            raise FileNotFoundError(e)
 
         # print(len(wikipedia_ds)) - 2,533,212
         # We'll iterate through each dataset entry

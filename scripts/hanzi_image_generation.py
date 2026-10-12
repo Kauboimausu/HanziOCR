@@ -97,7 +97,7 @@ def write_images(opts):
             )
             font_cmap = tfont.getBestCmap()
         except Exception as e:
-            print(f"ERROR: Could not load font, reason: {e}")
+            raise FileNotFoundError(e)
         print(f"Generating images for font {font_name}")
         for _, row in hanzi_df.iterrows():
             for script in opts.hanzi_styles:
@@ -108,45 +108,45 @@ def write_images(opts):
                 else:
                     continue
 
-            char = row[script_name]
-            if ord(char) in font_cmap:
-                left, top, right, bottom = font.getbbox(char)
-                # we'll calculate the required dimensions from the results, and we'll add a little wiggle room
-                required_width = ceil(abs((right - left) + 2 * opts.width_padding))
-                img_height = ceil(abs((bottom - top) + 2 * opts.height_padding))
-                img1 = Image.new("RGB", (required_width, img_height), "white")
-                draw1 = ImageDraw.Draw(img1)
-                draw1.text(
-                    (opts.width_padding, img_height / 2),
-                    text=char,
-                    font=font,
-                    fill="black",
-                    anchor="lm",
-                    align="left",
-                )
-                file_name = f"{ord(char)}_{script_name}_{font_name}.png"
-                img1.save(
-                    os.path.join(
-                        root,
-                        opts.data_folder,
-                        opts.image_save_location,
-                        file_name,
+                char = row[script_name]
+                if ord(char) in font_cmap:
+                    left, top, right, bottom = font.getbbox(char)
+                    # we'll calculate the required dimensions from the results, and we'll add a little wiggle room
+                    required_width = ceil(abs((right - left) + 2 * opts.width_padding))
+                    img_height = ceil(abs((bottom - top) + 2 * opts.height_padding))
+                    img1 = Image.new("RGB", (required_width, img_height), "white")
+                    draw1 = ImageDraw.Draw(img1)
+                    draw1.text(
+                        (opts.width_padding, img_height / 2),
+                        text=char,
+                        font=font,
+                        fill="black",
+                        anchor="lm",
+                        align="left",
                     )
-                )
-                manifest_df.loc[len(manifest_df)] = [
-                    file_name,
-                    ord(char),
-                    char,
-                    font_name,
-                    script_name,
-                ]
-            else:
-                error_manifest_df.loc[len(error_manifest_df)] = [
-                    ord(char),
-                    char,
-                    font_name,
-                    script_name,
-                ]
+                    file_name = f"{ord(char)}_{script_name}_{font_name}.png"
+                    img1.save(
+                        os.path.join(
+                            root,
+                            opts.data_folder,
+                            opts.image_save_location,
+                            file_name,
+                        )
+                    )
+                    manifest_df.loc[len(manifest_df)] = [
+                        file_name,
+                        ord(char),
+                        char,
+                        font_name,
+                        script_name,
+                    ]
+                else:
+                    error_manifest_df.loc[len(error_manifest_df)] = [
+                        ord(char),
+                        char,
+                        font_name,
+                        script_name,
+                    ]
         print("Done")
 
     # At the end we'll save our manifest df as a csv, this is important since this stores our ys for each X, the X being the image
