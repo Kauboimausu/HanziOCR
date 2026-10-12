@@ -1,11 +1,12 @@
-from PIL import Image, ImageDraw, ImageFont
-import os
 import argparse
-from hanzi_ocr import utils
+import os
+from math import ceil
+
 import pandas as pd
 from fontTools.ttLib import TTFont
-from math import ceil
-import numpy as np
+from PIL import Image, ImageDraw, ImageFont
+
+from hanzi_ocr import utils
 
 
 def get_hanzi_list(opts) -> pd.DataFrame:
@@ -22,16 +23,13 @@ def get_hanzi_list(opts) -> pd.DataFrame:
     Pandas dataframe with the hanzi data
     """
     root = utils.find_project_root()
-    try:
-        hanzi_df = pd.read_csv(
-            os.path.join(
-                root, opts.data_folder, opts.hanzi_location, opts.hanzi_file_name
-            ),
-            index_col="codepoint",
-        )
-        return hanzi_df
-    except Exception as e:
-        print(f"File could not be found at given location: {e}")
+    hanzi_df = pd.read_csv(
+        os.path.join(
+            root, opts.data_folder, opts.hanzi_location, opts.hanzi_file_name
+        ),
+        index_col="codepoint",
+    )
+    return hanzi_df
 
 
 def write_images(opts):
@@ -50,7 +48,7 @@ def write_images(opts):
     # If it doesn't exist we create a folder for the fonts
     if not os.path.exists(os.path.join(root, opts.data_folder, opts.font_location)):
         print(
-            f"WARNING: folder with fonts doesn't exist, make sure the name is properly given"
+            "WARNING: folder with fonts doesn't exist, make sure the name is properly given"
         )
         return
 
@@ -82,20 +80,17 @@ def write_images(opts):
         # reserved is the name for fonts that i dont want to render yet
         if "reserved" in font_name:
             continue
-        try:
-            font = ImageFont.truetype(
-                font=os.path.join(
-                    root, opts.data_folder, opts.font_location, font_name
-                ),
-                size=opts.character_size,
-            )
+        font = ImageFont.truetype(
+            font=os.path.join(
+                root, opts.data_folder, opts.font_location, font_name
+            ),
+            size=opts.character_size,
+        )
 
-            tfont = TTFont(
-                os.path.join(root, opts.data_folder, opts.font_location, font_name)
-            )
-            font_cmap = tfont.getBestCmap()
-        except Exception as e:
-            raise FileNotFoundError(e)
+        tfont = TTFont(
+            os.path.join(root, opts.data_folder, opts.font_location, font_name)
+        )
+        font_cmap = tfont.getBestCmap()
         print(f"Generating images for font {font_name}")
         for _, row in hanzi_df.iterrows():
             for script in opts.hanzi_styles:

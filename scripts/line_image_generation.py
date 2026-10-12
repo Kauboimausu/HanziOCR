@@ -1,14 +1,16 @@
-import os
 import argparse
-import pandas as pd
-import opencc
+import os
 import re
-import numpy as np
-from PIL import Image, ImageDraw, ImageFont
-from hanzi_ocr import utils
-from fontTools.ttLib import TTFont
-from datasets import load_from_disk, Dataset
 from math import ceil
+
+import numpy as np
+import opencc
+import pandas as pd
+from datasets import Dataset, load_from_disk
+from fontTools.ttLib import TTFont
+from PIL import Image, ImageDraw, ImageFont
+
+from hanzi_ocr import utils
 
 
 def take_wiki_excerpt(wiki_entry, excerpt_min_length, excerpt_max_length, random):
@@ -86,12 +88,9 @@ def load_wikipedia_data(opts) -> Dataset:
     List of fonts stored in specified directory
     """
     root = utils.find_project_root()
-    try:
-        return load_from_disk(
-            os.path.join(root, opts.data_folder, opts.zh_wiki_location)
-        )
-    except Exception as e:
-        print(f"File could not be found at given location: {e}")
+    return load_from_disk(
+        os.path.join(root, opts.data_folder, opts.zh_wiki_location)
+    )
 
 
 def clean_entry_text(wiki_entry, hanzi_styles, converter):
@@ -198,20 +197,17 @@ def write_images(opts):
         # reserved is the name for fonts that i dont want to render yet
         if "reserved" in font_name:
             continue
-        try:
-            font = ImageFont.truetype(
-                font=os.path.join(
-                    root, opts.data_folder, opts.font_location, font_name
-                ),
-                size=opts.character_size,
-            )
+        font = ImageFont.truetype(
+            font=os.path.join(
+                root, opts.data_folder, opts.font_location, font_name
+            ),
+            size=opts.character_size,
+        )
 
-            tfont = TTFont(
-                os.path.join(root, opts.data_folder, opts.font_location, font_name)
-            )
-            font_cmap = tfont.getBestCmap()
-        except Exception as e:
-            raise FileNotFoundError(e)
+        tfont = TTFont(
+            os.path.join(root, opts.data_folder, opts.font_location, font_name)
+        )
+        font_cmap = tfont.getBestCmap()
 
         # print(len(wikipedia_ds)) - 2,533,212
         # We'll iterate through each dataset entry
