@@ -60,8 +60,6 @@ def write_images(opts):
     )
     # We'll also generate a manifest for the characters that were not able to be rendered
     error_manifest_df = pd.DataFrame(columns=["codepoint", "text", "font", "type"])
-    manifest_arr = []
-    error_manifest_arr = []
 
     # If the specified folder for the generated images doesn't already exist we'll create it
     if not os.path.exists(
@@ -109,6 +107,8 @@ def write_images(opts):
                     continue
 
                 char = row[script_name]
+                if not utils.is_hanzi(char):
+                    continue
                 if ord(char) in font_cmap:
                     left, top, right, bottom = font.getbbox(char)
                     # we'll calculate the required dimensions from the results, and we'll add a little wiggle room

@@ -1,14 +1,14 @@
-from PIL import Image, ImageDraw, ImageFont
-import os, shutil
+import os
 import argparse
-from hanzi_ocr import utils
 import pandas as pd
-from fontTools.ttLib import TTFont
-from datasets import load_from_disk, Dataset
 import opencc
 import re
-from math import ceil
 import numpy as np
+from PIL import Image, ImageDraw, ImageFont
+from hanzi_ocr import utils
+from fontTools.ttLib import TTFont
+from datasets import load_from_disk, Dataset
+from math import ceil
 
 
 def take_wiki_excerpt(wiki_entry, excerpt_min_length, excerpt_max_length, random):
@@ -46,41 +46,9 @@ def take_wiki_excerpt(wiki_entry, excerpt_min_length, excerpt_max_length, random
         excerpt_min_length, min(excerpt_max_length, len(wiki_entry))
     )
 
-    start_pointer = random.integers(0, len(wiki_entry) - excerpt_length)
+    start_pointer = random.integers(0, len(wiki_entry) - excerpt_length + 1)
 
     return wiki_entry[start_pointer : (start_pointer + excerpt_length)]
-
-
-# Source - https://stackoverflow.com/a/37311125
-# Posted by alvas, modified by community. See post 'Timeline' for change history
-# Retrieved 2026-08-17, License - CC BY-SA 3.0
-
-
-def is_hanzi(character):
-    """ "
-    Checks whether character is CJK.
-
-    :param character: The character that needs to be checked.
-    :type character: char
-    :return: bool
-    """
-    return any(
-        [
-            start <= ord(character) <= end
-            for start, end in [
-                (ord("\u3300"), ord("\u33ff")),
-                (ord("\ufe30"), ord("\ufe4f")),
-                (ord("\uf900"), ord("\ufaff")),
-                (ord("\U0002f800"), ord("\U0002fa1f")),
-                (ord("\u4e00"), ord("\u9fff")),
-                (ord("\u3400"), ord("\u4dbf")),
-                (ord("\U00020000"), ord("\U0002a6df")),
-                (ord("\U0002a700"), ord("\U0002b73f")),
-                (ord("\U0002b740"), ord("\U0002b81f")),
-                (ord("\U0002b820"), ord("\U0002ceaf")),
-            ]
-        ]
-    )
 
 
 def get_excerpt_hanzi_proportion(excerpt):
@@ -98,7 +66,7 @@ def get_excerpt_hanzi_proportion(excerpt):
 
     total_hanzi = 0
     for char in excerpt:
-        if is_hanzi(char):
+        if utils.is_hanzi(char):
             total_hanzi += 1
 
     return (total_hanzi / len(excerpt)) * 100
@@ -151,7 +119,7 @@ def clean_entry_text(wiki_entry, hanzi_styles, converter):
     wiki_entry = wiki_entry.replace("**", "")
     wiki_entry = wiki_entry.replace("__", "")
     wiki_entry = wiki_entry.replace("##", "")
-    wiki_entry = re.sub(r"$.+$", "", wiki_entry)
+    wiki_entry = re.sub(r"\$.+\$", "", wiki_entry)
     wiki_entry = wiki_entry.replace("「!」", "")
     wiki_entry = wiki_entry.replace("( ! )", "")
     wiki_entry = wiki_entry.replace("「?」", "")
