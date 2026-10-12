@@ -81,13 +81,42 @@ def delete_images(data_folder, image_location, manifest_location):
         except Exception as e:
             print("Failed to delete %s. Reason: %s" % (file_path, e))
 
-            manifest_folder = os.path.join(root, data_folder, manifest_location)
-            for filename in os.listdir(manifest_folder):
-                file_path = os.path.join(manifest_folder, filename)
-                try:
-                    if os.path.isfile(file_path) or os.path.islink(file_path):
-                        os.unlink(file_path)
-                    elif os.path.isdir(file_path):
-                        shutil.rmtree(file_path)
-                except Exception as e:
-                    print("Failed to delete %s. Reason: %s" % (file_path, e))
+    manifest_folder = os.path.join(root, data_folder, manifest_location)
+    for filename in os.listdir(manifest_folder):
+        file_path = os.path.join(manifest_folder, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print("Failed to delete %s. Reason: %s" % (file_path, e))
+            
+# Source - https://stackoverflow.com/a/37311125
+# Posted by alvas, modified by community. See post 'Timeline' for change history
+# Retrieved 2026-08-17, License - CC BY-SA 3.0
+def is_hanzi(character):
+    """ "
+    Checks whether character is CJK.
+
+    :param character: The character that needs to be checked.
+    :type character: char
+    :return: bool
+    """
+    return any(
+        [
+            start <= ord(character) <= end
+            for start, end in [
+                (ord("\u3300"), ord("\u33ff")),
+                (ord("\ufe30"), ord("\ufe4f")),
+                (ord("\uf900"), ord("\ufaff")),
+                (ord("\U0002f800"), ord("\U0002fa1f")),
+                (ord("\u4e00"), ord("\u9fff")),
+                (ord("\u3400"), ord("\u4dbf")),
+                (ord("\U00020000"), ord("\U0002a6df")),
+                (ord("\U0002a700"), ord("\U0002b73f")),
+                (ord("\U0002b740"), ord("\U0002b81f")),
+                (ord("\U0002b820"), ord("\U0002ceaf")),
+            ]
+        ]
+    )
