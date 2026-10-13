@@ -3,16 +3,16 @@ import argparse
 import os
 from hanzi_ocr import utils
 
-def save_dataset(opts):
+def save_dataset(root, opts):
     """
     Saves the chinese wikipedia dataset in the specified location
     Parameters
     -----------
+    root: str or Path
+        Project's root directory
     opts: argparse.Namespace
         Parameters given by the user
     """
-    # First we'll find the project's root
-    root = utils.find_project_root()
     ds = load_dataset(
         "YCWTG/wikipedia_zh_cleaned_latest",
         split="train",
@@ -51,7 +51,7 @@ def main():
     )
 
     opts = parser.parse_args()
-    save_dataset(opts)
+    save_dataset(utils.find_project_root(), opts)
 
 
 if __name__ == "__main__":

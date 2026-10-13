@@ -36,12 +36,14 @@ def str2bool(v):
         raise argparse.ArgumentTypeError("Boolean value expected.")
 
 
-def get_fonts_list(data_folder, font_folder) -> list[str]:
+def get_fonts_list(root, data_folder, font_folder) -> list[str]:
     """
     Returns the files stored in the fonts directory, that is, returns a list of all the fonts to be rendered
 
     Parameters
     ----------
+    root: str or Path
+        Project's root directory
     data_folder: str
         Root folder for project data
     font_folder: str
@@ -51,24 +53,28 @@ def get_fonts_list(data_folder, font_folder) -> list[str]:
     ----------
     List of fonts stored in specified directory
     """
-    root = find_project_root()
     return os.listdir(os.path.join(root, data_folder, font_folder))
 
 
-def delete_images(data_folder, image_location, manifest_location):
+def delete_images(root, data_folder, image_location, manifest_location):
     """
     Deletes all the images and the corresponding manifest in the specified location
 
     Parameters
     -----------
-    opts: argparse.Namespace
-    Parameters given by the user
+    root: str or Path
+        Project's root directory
+    data_folder: str
+        Root folder for project data
+    image_location: str
+        Folder with the images to be deleted
+    manifest_location: str
+        Folder with the manifests to be deleted
     """
     # Source - https://stackoverflow.com/a/185941
     # Posted by Nick Stinemates, modified by community. See post 'Timeline' for change history
     # Retrieved 2026-07-08, License - CC BY-SA 4.0
 
-    root = find_project_root()
     imgs_folder = os.path.join(root, data_folder, image_location)
     manifest_folder = os.path.join(root, data_folder, manifest_location)
 

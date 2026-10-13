@@ -28,21 +28,16 @@ def get_device():
         return "cpu"
 
 
-def make_checkpoint_path(opts):
+def make_checkpoint_path(root, data_folder, model_name):
     """Makes sure the checkpoint path exists and if it doesn't it creates it"""
 
-    root = utils.find_project_root()
-    os.makedirs(
-        os.path.join(root, "data/", "model_weights/", opts.model_name),
-        exist_ok=True,
-    )
+    checkpoint_folder = os.path.join(root, data_folder, "model_weights/", model_name)
+    os.makedirs(checkpoint_folder, exist_ok=True)
 
-    return os.path.join(root, "data/", "model_weights/", opts.model_name)
+    return checkpoint_folder
 
-def train_model(opts):
+def train_model(root, opts):
     """Trains the model according to the hyperparameters given"""
-    
-    root = utils.find_project_root()
 
     csv_path = os.path.join(
         root, opts.data_folder, opts.manifest_folder, opts.manifest_name
@@ -52,10 +47,10 @@ def train_model(opts):
     le = LabelEncoder()
     le.fit(hanzi_df["codepoint"])
     
-    model_save_location = make_checkpoint_path(opts)
+    model_save_location = make_checkpoint_path(root, opts.data_folder, opts.model_name)
     checkpoint_path = os.path.join(model_save_location, "checkpoint.pt")
     json_save_path = os.path.join(model_save_location, "le.json")
-    train_hyperparameters_path = os.path.join(model_save_location, "train_hyperparameters")
+    train_hyperparameters_path = os.path.join(model_save_location, "train_hyperparameters.json")
     
     with open(json_save_path, "w") as jsonfile:
         json.dump(le.classes_.tolist(), jsonfile, indent=4)
@@ -277,7 +272,7 @@ def main():
     )
 
     opts = parser.parse_args()
-    train_model(opts)
+    train_model(utils.find_project_root(), opts)
 
 
 if __name__ == "__main__":

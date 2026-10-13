@@ -74,12 +74,14 @@ def get_excerpt_hanzi_proportion(excerpt):
     return (total_hanzi / len(excerpt)) * 100
 
 
-def load_wikipedia_data(data_folder, zh_wiki_location) -> Dataset:
+def load_wikipedia_data(root, data_folder, zh_wiki_location) -> Dataset:
     """
     Retrieves the dataset from the disk and returns it
 
     Parameters
     ----------
+    root: str or Path
+        Project's root directory
     data_folder: str
         Root folder for project data
     zh_wiki_location: str
@@ -89,7 +91,6 @@ def load_wikipedia_data(data_folder, zh_wiki_location) -> Dataset:
     ----------
     The Chinese Wikipedia dataset
     """
-    root = utils.find_project_root()
     return load_from_disk(os.path.join(root, data_folder, zh_wiki_location))
 
 
@@ -147,7 +148,7 @@ def clean_entry_text(
         return [(traditional_splits, "traditional")]
 
 
-def write_images(opts):
+def write_images(root, opts):
     """
     Generates the training images by loading each font stored locally,
     iterating through them one at a time, then for each font it iterates
@@ -156,10 +157,11 @@ def write_images(opts):
 
     Parameters
     -----------
+    root: str or Path
+        Project's root directory
     opts: argparse.Namespace
         Parameters given by the user
     """
-    root = utils.find_project_root()
     # If it doesn't exist we create a folder for the fonts
     if not os.path.exists(os.path.join(root, opts.data_folder, opts.font_location)):
         print(
@@ -177,8 +179,8 @@ def write_images(opts):
         os.makedirs(os.path.join(root, opts.data_folder, opts.img_save_location))
 
     # We'll get the list of saved fonts and iterate through them
-    fonts = utils.get_fonts_list(opts.data_folder, opts.font_location)
-    wikipedia_ds = load_wikipedia_data(opts.data_folder, opts.zh_wiki_location)
+    fonts = utils.get_fonts_list(root, opts.data_folder, opts.font_location)
+    wikipedia_ds = load_wikipedia_data(root, opts.data_folder, opts.zh_wiki_location)
 
     if "s" not in opts.hanzi_styles.lower() and "t" not in opts.hanzi_styles.lower():
         print(
@@ -439,10 +441,11 @@ def main():
     )
 
     opts = parser.parse_args()
+    root = utils.find_project_root()
     utils.delete_images(
-        opts.data_folder, opts.img_save_location, opts.manifest_save_location
+        root, opts.data_folder, opts.img_save_location, opts.manifest_save_location
     )
-    write_images(opts)
+    write_images(root, opts)
 
 
 if __name__ == "__main__":

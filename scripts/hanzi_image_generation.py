@@ -9,12 +9,14 @@ from PIL import Image, ImageDraw, ImageFont
 from hanzi_ocr import utils
 
 
-def get_hanzi_list(data_folder, hanzi_location, hanzi_file_name) -> pd.DataFrame:
+def get_hanzi_list(root, data_folder, hanzi_location, hanzi_file_name) -> pd.DataFrame:
     """
     Reads the csv in which the hanzis are stored and returns the dataframe
 
     Parameters
     ----------
+    root: str or Path
+        Project's root directory
     data_folder: str
         Root folder for project data
     hanzi_location: str
@@ -26,7 +28,6 @@ def get_hanzi_list(data_folder, hanzi_location, hanzi_file_name) -> pd.DataFrame
     ---------
     Pandas dataframe with the hanzi data
     """
-    root = utils.find_project_root()
     hanzi_df = pd.read_csv(
         os.path.join(root, data_folder, hanzi_location, hanzi_file_name),
         index_col="codepoint",
@@ -34,7 +35,7 @@ def get_hanzi_list(data_folder, hanzi_location, hanzi_file_name) -> pd.DataFrame
     return hanzi_df
 
 
-def write_images(opts):
+def write_images(root, opts):
     """
     Generates the training images by loading each font stored locally,
     iterating through them one at a time, then for each font it iterates
@@ -43,10 +44,11 @@ def write_images(opts):
 
     Parameters
     -----------
+    root: str or Path
+        Project's root directory
     opts: argparse.Namespace
-    Parameters given by the user
+        Parameters given by the user
     """
-    root = utils.find_project_root()
     # If it doesn't exist we create a folder for the fonts
     if not os.path.exists(os.path.join(root, opts.data_folder, opts.font_location)):
         print(
@@ -68,9 +70,9 @@ def write_images(opts):
         os.makedirs(os.path.join(root, opts.data_folder, opts.image_save_location))
 
     # We'll get the list of saved fonts and iterate through them
-    fonts = utils.get_fonts_list(opts.data_folder, opts.font_location)
+    fonts = utils.get_fonts_list(root, opts.data_folder, opts.font_location)
     hanzi_df = get_hanzi_list(
-        opts.data_folder, opts.hanzi_location, opts.hanzi_file_name
+        root, opts.data_folder, opts.hanzi_location, opts.hanzi_file_name
     )
 
     if "s" not in opts.hanzi_styles.lower() and "t" not in opts.hanzi_styles.lower():
@@ -262,10 +264,11 @@ def main():
     )
 
     opts = parser.parse_args()
+    root = utils.find_project_root()
     utils.delete_images(
-        opts.data_folder, opts.image_save_location, opts.manifest_save_location
+        root, opts.data_folder, opts.image_save_location, opts.manifest_save_location
     )
-    write_images(opts)
+    write_images(root, opts)
 
 
 if __name__ == "__main__":

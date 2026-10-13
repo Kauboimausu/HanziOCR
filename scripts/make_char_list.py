@@ -6,22 +6,23 @@ import pandas as pd
 from hanzi_ocr import utils
 
 
-def make_char_list(opts):
+def make_char_list(root, opts):
     """
-    Generates a pd dataframe from the given files and saves it in the given 
+    Generates a pd dataframe from the given files and saves it in the given
     desired location as a csv
     Parameters
     ------------
+    root: str or Path
+        Project's root directory
     opts: argparse.Namespace
         Parameters given by the user
     """
 
-    root_dir = utils.find_project_root()
     files = opts.hsk_level
 
     #If it doesn't already exist we'll create a folder for the hsk vocab lists
-    if not os.path.exists(os.path.join(root_dir, opts.data_folder, opts. hsk_list_folder)):
-        os.makedirs(os.path.join(root_dir, opts.data_folder, opts.hsk_list_folder))
+    if not os.path.exists(os.path.join(root, opts.data_folder, opts. hsk_list_folder)):
+        os.makedirs(os.path.join(root, opts.data_folder, opts.hsk_list_folder))
         print("WARNING: folder with the HSK vocabulary list didn't already exist, vocabulary list will not be generated as there's nothing to generate it from")
         return
 
@@ -30,7 +31,7 @@ def make_char_list(opts):
     for file in files:
         print(f"Processing file {file}")
         hanzi_df = pd.read_csv(
-            os.path.join(root_dir, opts.data_folder, opts.hsk_list_folder, file),
+            os.path.join(root, opts.data_folder, opts.hsk_list_folder, file),
             delimiter="\t",
             header=None,
             names=["traditional", "simplified", "pinyin", "definition"],
@@ -51,11 +52,11 @@ def make_char_list(opts):
 
     unique_hanzi_df.set_index("codepoint", inplace=True)
     unique_hanzi_df.sort_index(inplace=True)
-    if not os.path.exists(os.path.join(root_dir, opts.data_folder, opts.save_location)):
-        os.makedirs(os.path.join(root_dir, opts.data_folder, opts.save_location))
+    if not os.path.exists(os.path.join(root, opts.data_folder, opts.save_location)):
+        os.makedirs(os.path.join(root, opts.data_folder, opts.save_location))
 
     unique_hanzi_df.to_csv(
-        os.path.join(root_dir, opts.data_folder, opts.save_location, opts.save_name)
+        os.path.join(root, opts.data_folder, opts.save_location, opts.save_name)
     )
 
 
@@ -99,7 +100,7 @@ def main():
     )
 
     opts = parser.parse_args()
-    make_char_list(opts)
+    make_char_list(utils.find_project_root(), opts)
 
 
 if __name__ == "__main__":
