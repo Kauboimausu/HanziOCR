@@ -8,3 +8,5 @@ data/
 .python-version
 *.ipynb
 **/pycache
+
+tests/
