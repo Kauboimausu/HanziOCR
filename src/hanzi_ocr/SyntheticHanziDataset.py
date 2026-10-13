@@ -1,9 +1,10 @@
 import os
+
+import cv2
 import matplotlib.pyplot as plt
-from torch.utils.data import Dataset
 import pandas as pd
 import torch
-import cv2
+from torch.utils.data import Dataset
 
 
 def plot_image(image, char):
