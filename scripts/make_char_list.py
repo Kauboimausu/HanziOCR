@@ -1,6 +1,8 @@
-import pandas as pd
-import os
 import argparse
+import os
+
+import pandas as pd
+
 from hanzi_ocr import utils
 
 
@@ -21,6 +23,7 @@ def make_char_list(opts):
     if not os.path.exists(os.path.join(root_dir, opts.data_folder, opts. hsk_list_folder)):
         os.makedirs(os.path.join(root_dir, opts.data_folder, opts.hsk_list_folder))
         print("WARNING: folder with the HSK vocabulary list didn't already exist, vocabulary list will not be generated as there's nothing to generate it from")
+        return
 
     unique_hanzi = []
     unique_hanzi_df = pd.DataFrame(columns=["codepoint", "simplified", "traditional"])
@@ -77,7 +80,6 @@ def main():
         "--hsk_level",
         type=str,
         nargs="+",
-        #default=["HSK 1.tsv"],
         default=["HSK 1.tsv", "HSK 2.tsv", "HSK 3.tsv", "HSK 4.tsv", "HSK 5.tsv", "HSK 6.tsv", "HSK 7-9.tsv"],
         help="In the given folder, which files are to be added to the set",
     )
