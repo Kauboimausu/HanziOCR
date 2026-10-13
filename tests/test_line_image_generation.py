@@ -1,12 +1,30 @@
+import shutil
+from argparse import Namespace
+
 import opencc
+import pandas as pd
 import pytest
+from datasets import Dataset
 from line_image_generation import (
     clean_entry_text,
     get_excerpt_hanzi_proportion,
+    load_wikipedia_data,
     take_wiki_excerpt,
+    write_images,
 )
 
+from hanzi_ocr.utils import find_project_root
+
 TEXT = "这是一个很长的测试句子用来检查摘录"
+FONT_NAME = "ZCOOLKuaiLe-Regular.ttf"
+WIKI_PAGES = {
+    "pageid": [1, 2, 3],
+    "markdown": [
+        "中文中文中文中文中文\n\n中国人中国人中国人",
+        "this page is only latin text",
+        "大家好大家好大家好大家好",
+    ],
+}
 
 
 def test_excerpt_respects_min_length(rng):
@@ -102,3 +120,69 @@ def test_clean_entry_traditional_is_traditional(converters):
 def test_clean_entry_both_styles_in_order(converters):
     result = clean_entry_text("这是测试", "st", *converters)
     assert result == [(["这是测试"], "simplified"), (["這是測試"], "traditional")]
+
+
+def make_opts(**overrides):
+    """Same names as the script's argparse, any of them can be overridden"""
+    opts = {
+        "data_folder": "data",
+        "font_location": "fonts",
+        "zh_wiki_location": "wiki",
+        "img_save_location": "imgs",
+        "manifest_save_location": "manifest",
+        "manifest_name": "manifest.csv",
+        "error_manifest_name": "error_manifest.csv",
+        "pages_per_font": 3,
+        "character_size": 30,
+        "width_padding": 5,
+        "height_padding": 5,
+        "snippet_length_range": [3, 5],
+        "min_hanzi_proportion": 70,
+        "hanzi_styles": "s",
+        "random_seed": 0,
+    }
+    opts.update(overrides)
+    return Namespace(**opts)
+
+
+@pytest.fixture
+def project(tmp_path):
+    """Fake project: one real font and a tiny Wikipedia dataset saved to disk"""
+    fonts = tmp_path / "data" / "fonts"
+    fonts.mkdir(parents=True)
+    shutil.copy(find_project_root() / "data" / "fonts" / FONT_NAME, fonts / FONT_NAME)
+    Dataset.from_dict(WIKI_PAGES).save_to_disk(str(tmp_path / "data" / "wiki"))
+    return tmp_path
+
+
+def read_manifest(project):
+    return pd.read_csv(project / "data" / "manifest" / "manifest.csv")
+
+
+def test_load_wikipedia_data_returns_saved_pages(project):
+    ds = load_wikipedia_data(project, "data", "wiki")
+    assert ds["pageid"] == WIKI_PAGES["pageid"]
+
+
+def test_write_images_excerpts_come_from_the_pages(project):
+    write_images(project, make_opts())
+    texts = read_manifest(project)["text"]
+    assert len(texts) > 0
+    assert all(any(text in page for page in WIKI_PAGES["markdown"]) for text in texts)
+
+
+def test_write_images_respects_snippet_length_range(project):
+    write_images(project, make_opts())
+    assert read_manifest(project)["text"].str.len().between(3, 5).all()
+
+
+def test_write_images_filters_low_hanzi_proportion(project):
+    write_images(project, make_opts())
+    proportions = read_manifest(project)["text"].map(get_excerpt_hanzi_proportion)
+    assert (proportions >= 70).all()
+
+
+def test_write_images_saves_the_files_listed_in_manifest(project):
+    write_images(project, make_opts())
+    for file_name in read_manifest(project)["file name"]:
+        assert (project / "data" / "imgs" / file_name).is_file()
