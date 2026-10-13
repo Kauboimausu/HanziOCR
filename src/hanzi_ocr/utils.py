@@ -1,7 +1,8 @@
-from pathlib import Path
 import argparse
 import os
 import shutil
+from pathlib import Path
+
 
 def find_project_root():
     """
@@ -12,11 +13,14 @@ def find_project_root():
     Path object with the directory's root
     """
     leaf = Path(__file__).parent
-    while not Path(leaf/"pyproject.toml").exists():
+    while not Path(leaf / "pyproject.toml").exists():
         if leaf.parent == leaf:
-            raise Exception("Directory's root couldn't be found")
+            raise FileNotFoundError(
+                "Directory's root couldn't be found, are you certain a 'pyproject.toml file exists at the project directory?'"
+            )
         leaf = leaf.parent
     return leaf
+
 
 # Source - https://stackoverflow.com/a/43357954
 # Posted by Maxim, modified by community. See post 'Timeline' for change history
@@ -48,10 +52,7 @@ def get_fonts_list(data_folder, font_folder) -> list[str]:
     List of fonts stored in specified directory
     """
     root = find_project_root()
-    try:
-        return os.listdir(os.path.join(root, data_folder, font_folder))
-    except Exception as e:
-        raise Exception(f"Folder could not be found: {e}")
+    return os.listdir(os.path.join(root, data_folder, font_folder))
 
 
 def delete_images(data_folder, image_location, manifest_location):
@@ -69,8 +70,13 @@ def delete_images(data_folder, image_location, manifest_location):
 
     root = find_project_root()
     imgs_folder = os.path.join(root, data_folder, image_location)
+    manifest_folder = os.path.join(root, data_folder, manifest_location)
+
     if not os.path.exists(imgs_folder):
         os.makedirs(imgs_folder)
+    if not os.path.exists(manifest_folder):
+        os.makedirs(manifest_folder)
+
     for filename in os.listdir(imgs_folder):
         file_path = os.path.join(imgs_folder, filename)
         try:
@@ -78,8 +84,8 @@ def delete_images(data_folder, image_location, manifest_location):
                 os.unlink(file_path)
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
-        except Exception as e:
-            print("Failed to delete %s. Reason: %s" % (file_path, e))
+        except ReferenceError as e:
+            print(f"Failed to delete {file_path}. Reason: {e}")
 
     manifest_folder = os.path.join(root, data_folder, manifest_location)
     for filename in os.listdir(manifest_folder):
@@ -89,9 +95,10 @@ def delete_images(data_folder, image_location, manifest_location):
                 os.unlink(file_path)
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
-        except Exception as e:
-            print("Failed to delete %s. Reason: %s" % (file_path, e))
-            
+        except ReferenceError as e:
+            print(f"Failed to delete {file_path}. Reason: {e}")
+
+
 # Source - https://stackoverflow.com/a/37311125
 # Posted by alvas, modified by community. See post 'Timeline' for change history
 # Retrieved 2026-08-17, License - CC BY-SA 3.0
@@ -104,19 +111,17 @@ def is_hanzi(character):
     :return: bool
     """
     return any(
-        [
-            start <= ord(character) <= end
-            for start, end in [
-                (ord("\u3300"), ord("\u33ff")),
-                (ord("\ufe30"), ord("\ufe4f")),
-                (ord("\uf900"), ord("\ufaff")),
-                (ord("\U0002f800"), ord("\U0002fa1f")),
-                (ord("\u4e00"), ord("\u9fff")),
-                (ord("\u3400"), ord("\u4dbf")),
-                (ord("\U00020000"), ord("\U0002a6df")),
-                (ord("\U0002a700"), ord("\U0002b73f")),
-                (ord("\U0002b740"), ord("\U0002b81f")),
-                (ord("\U0002b820"), ord("\U0002ceaf")),
-            ]
+        start <= ord(character) <= end
+        for start, end in [
+            (ord("\u3300"), ord("\u33ff")),
+            (ord("\ufe30"), ord("\ufe4f")),
+            (ord("\uf900"), ord("\ufaff")),
+            (ord("\U0002f800"), ord("\U0002fa1f")),
+            (ord("\u4e00"), ord("\u9fff")),
+            (ord("\u3400"), ord("\u4dbf")),
+            (ord("\U00020000"), ord("\U0002a6df")),
+            (ord("\U0002a700"), ord("\U0002b73f")),
+            (ord("\U0002b740"), ord("\U0002b81f")),
+            (ord("\U0002b820"), ord("\U0002ceaf")),
         ]
     )
