@@ -1,8 +1,9 @@
-import torch
 import os
-from torch.optim.lr_scheduler import ReduceLROnPlateau, OneCycleLR
+
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
+from torch.optim.lr_scheduler import OneCycleLR, ReduceLROnPlateau
 
 
 def plot_training_history(history, figure_save_location):
@@ -51,7 +52,6 @@ def train_with_early_stopping(
     checkpoint_path,
     epochs=100,
     patience=10,
-    verbose=1
 ):
     """Trains the model with early stopping and saves the checkpoint
     
@@ -135,11 +135,11 @@ def train_with_early_stopping(
             epochs_without_improvement = 0
             best_valid_metric = valid_metric
             torch.save(model.state_dict(), checkpoint_path)
-        elif epochs_without_improvement < patience:
+        elif epochs_without_improvement < (patience-1):
             epochs_without_improvement += 1
         else:
             print(
-                f"Out of patience, {epochs_without_improvement} without improvement, stopping training at epoch {epoch}"
+                f"Out of patience, {epochs_without_improvement} without improvement, stopping training at epoch {epoch+1}"
             )
             break
 

@@ -1,24 +1,22 @@
-import os
 import argparse
 import json
+import os
 
-import pandas as pd
-import torchmetrics
-import torch
 import albumentations as A
-from albumentations.pytorch import ToTensorV2
-
-from hanzi_ocr.HMNIST import HMNISTModel
-from hanzi_ocr.train_nn import train_with_early_stopping
-from hanzi_ocr import utils
-from hanzi_ocr.SyntheticHanziDataset import SynthethicHanziDataset
-
+import pandas as pd
+import torch
 import torch.optim as optims
-from torch.nn import CrossEntropyLoss
-from torch.utils.data import DataLoader
-from torch.optim.lr_scheduler import OneCycleLR, ReduceLROnPlateau
-
+import torchmetrics
+from albumentations.pytorch import ToTensorV2
 from sklearn.preprocessing import LabelEncoder
+from torch.nn import CrossEntropyLoss
+from torch.optim.lr_scheduler import OneCycleLR, ReduceLROnPlateau
+from torch.utils.data import DataLoader
+
+from hanzi_ocr import utils
+from hanzi_ocr.HMNIST import HMNISTModel
+from hanzi_ocr.SyntheticHanziDataset import SynthethicHanziDataset
+from hanzi_ocr.train_nn import train_with_early_stopping
 
 
 def get_device():
@@ -57,10 +55,13 @@ def train_model(opts):
     model_save_location = make_checkpoint_path(opts)
     checkpoint_path = os.path.join(model_save_location, "checkpoint.pt")
     json_save_path = os.path.join(model_save_location, "le.json")
+    train_hyperparameters_path = os.path.join(model_save_location, "train_hyperparameters")
     
     with open(json_save_path, "w") as jsonfile:
         json.dump(le.classes_.tolist(), jsonfile, indent=4)
     
+    with open(train_hyperparameters_path, "w") as jsonfile:
+        json.dump(vars(opts), jsonfile, indent=4)
 
     imgs_folder_path = os.path.join(root, opts.data_folder, opts.imgs_folder)
     
@@ -69,7 +70,7 @@ def train_model(opts):
 
     model = HMNISTModel(num_classes).to(device)
 
-    match opts.optimizer.lower():
+    match opts.optimizer:
         case "adam":
             optimizer = optims.Adam(
                 params=model.parameters(), lr=opts.lr, betas=(0.9, 0.999)
@@ -84,26 +85,20 @@ def train_model(opts):
             optimizer = optims.SGD(
                 params=model.parameters(), nesterov=False, momentum=0.9, lr=opts.lr
             )
-        case _:
-            raise ValueError(
-                "The optimized is not supported, pick one from: 'Adam', 'AdamW', 'NAG', or 'Momentum'"
-            )
 
-    match opts.metric.lower():
+    match opts.metric:
         case "accuracy":
             metric = torchmetrics.Accuracy(
                 task="multiclass", num_classes=num_classes
             ).to(device)
         case "f1":
             metric = torchmetrics.F1Score(
-                task="multiclass", num_classes=num_classes
+                task="multiclass", num_classes=num_classes, average="weighted"
             ).to(device)
         case "f1 macro":
             metric = torchmetrics.F1Score(
                 task="multiclass", num_classes=num_classes, average="macro"
             ).to(device)
-        case _:
-            raise ValueError("The metric must be specified, pick one from: 'Accuracy', 'F1', or 'F1 Macro'")
 
     criterion = CrossEntropyLoss()
 
@@ -153,15 +148,13 @@ def train_model(opts):
     train_loader = DataLoader(train_ds, opts.batch_size, shuffle=True, generator=rng)
     valid_loader = DataLoader(valid_ds, opts.batch_size, shuffle=False)
     
-    match opts.scheduler.lower():
+    match opts.scheduler:
         case "performance":
             scheduler = ReduceLROnPlateau(optimizer, mode="max")
         case "onecycle":
             scheduler = OneCycleLR(optimizer, max_lr=opts.lr, epochs=opts.epochs, steps_per_epoch=len(train_loader))
-        case "none":
+        case None:
             scheduler = None
-        case _:
-            raise ValueError("The scheduler given is not valid, pick one from 'Performance', 'OneCycle', or 'None'")
 
     train_with_early_stopping(
         device,
@@ -183,21 +176,24 @@ def main():
 
     parser.add_argument(
         "--optimizer",
-        type=str,
-        default="AdamW",
+        type=str.lower,
+        choices=["adam", "adamw", "nag", "momentum"],
+        default="adamw",
         help="The name of the optimizer that will be used during training, one of 'Adam', 'AdamW', 'NAG', or 'Momentum'",
     )
     
     parser.add_argument(
         "--scheduler",
-        type=str,
-        default="None",
+        type=str.lower,
+        choices=["performance", "onecycle"],
+        default=None,
         help="The type of scheduler that will be used during training, one of 'Performance', 'OneCycle', or 'None'"
     )
 
     parser.add_argument(
         "--metric",
-        type=str,
+        type=str.lower,
+        choices=["accuracy", "f1", "f1 macro"],
         default="accuracy",
         help="The name of the metric that will be used for validation and early stopping, one of 'Accuracy', 'F1', 'F1 Macro'",
     )
