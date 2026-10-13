@@ -74,47 +74,49 @@ def get_excerpt_hanzi_proportion(excerpt):
     return (total_hanzi / len(excerpt)) * 100
 
 
-def load_wikipedia_data(opts) -> Dataset:
+def load_wikipedia_data(data_folder, zh_wiki_location) -> Dataset:
     """
     Retrieves the dataset from the disk and returns it
 
     Parameters
     ----------
-    opts: argparse.Namespace
-        Parameters given by the user
+    data_folder: str
+        Root folder for project data
+    zh_wiki_location: str
+        Folder in which the Chinese Wikipedia dataset was saved
 
     Returns
     ----------
-    List of fonts stored in specified directory
+    The Chinese Wikipedia dataset
     """
     root = utils.find_project_root()
-    return load_from_disk(
-        os.path.join(root, opts.data_folder, opts.zh_wiki_location)
-    )
+    return load_from_disk(os.path.join(root, data_folder, zh_wiki_location))
 
 
-def clean_entry_text(wiki_entry, hanzi_styles, converter):
+def clean_entry_text(
+    wiki_entry, hanzi_styles, simplified_converter, traditional_converter
+):
     """
     Removes garbage text from the wiki's entry. Also converts from traditional to simpliified, if need be
 
     Parameters
     -----------
-    wiki_entry
+    wiki_entry: str
         The entry to clean up
+    hanzi_styles: str
+        The hanzi types to be included:
+            ``S`` for simplified
+            ``T`` for traditional
+            Both can be included
+    simplified_converter: openCC.OpenCC
+        Initialized OpenCC instance to convert from traditional to simplified
+    traditional_converter: openCC.OpenCC
+        Initialized OpenCC instance to convert from simplified to traditional
 
     Returns
     -----------
     Returns the entry split by newlines in the order: Simplified, Traditional. If either was not requested it won't be returned at all (the number of returns will change, None will not be returned in its place)
     """
-
-    # wiki_entry = re.sub(r"={2,}", "", wiki_entry)
-    # wiki_entry = re.sub(r"\\[a-zA-Z]+(\{[a-zA-Z0-9]+\})?", "", wiki_entry)
-    # wiki_entry = re.sub(
-    #    r"(</?p>|</p *+>|</?b>|</b *+>|</?span>|</?span id=" * +">|</?h[1-6]>)|",
-    #    "",
-    #    wiki_entry,
-    # )
-
     wiki_entry = wiki_entry.replace("**", "")
     wiki_entry = wiki_entry.replace("__", "")
     wiki_entry = wiki_entry.replace("##", "")
@@ -124,22 +126,23 @@ def clean_entry_text(wiki_entry, hanzi_styles, converter):
     wiki_entry = wiki_entry.replace("「?」", "")
     wiki_entry = wiki_entry.replace("( ? )", "")
     wiki_entry = wiki_entry.replace("[io]", "")
-    # wiki_entry = re.sub(r"( ! )|「!」", "!", wiki_entry)
-    # wiki_entry = re.sub(r"( ? )|「?」", "!", wiki_entry)
 
-    if 's' in hanzi_styles.lower() and 't' in hanzi_styles.lower():
-        simplified_entry = converter.convert(wiki_entry)
+    if "s" in hanzi_styles.lower() and "t" in hanzi_styles.lower():
+        simplified_entry = simplified_converter.convert(wiki_entry)
         simplified_splits = simplified_entry.split("\n")
-        traditional_splits = wiki_entry.split("\n")
+
+        traditional_entry = simplified_converter.convert(wiki_entry)
+        traditional_splits = traditional_entry.split("\n")
 
         return [(simplified_splits, "simplified"), (traditional_splits, "traditional")]
     elif "s" in hanzi_styles.lower():
-        simplified_entry = converter.convert(wiki_entry)
+        simplified_entry = simplified_converter.convert(wiki_entry)
         simplified_splits = simplified_entry.split("\n")
 
         return [(simplified_splits, "simplified")]
     elif "t" in hanzi_styles.lower():
-        traditional_splits = wiki_entry.split("\n")
+        traditional_entry = simplified_converter.convert(wiki_entry)
+        traditional_splits = traditional_entry.split("\n")
 
         return [(traditional_splits, "traditional")]
 
@@ -153,14 +156,14 @@ def write_images(opts):
 
     Parameters
     -----------
-     opts: argparse.Namespace
+    opts: argparse.Namespace
         Parameters given by the user
     """
     root = utils.find_project_root()
     # If it doesn't exist we create a folder for the fonts
     if not os.path.exists(os.path.join(root, opts.data_folder, opts.font_location)):
         print(
-            f"WARNING: folder with fonts doesn't exist, make sure the name is properly given"
+            "WARNING: folder with fonts doesn't exist, make sure the name is properly given"
         )
         return
 
@@ -175,13 +178,9 @@ def write_images(opts):
 
     # We'll get the list of saved fonts and iterate through them
     fonts = utils.get_fonts_list(opts.data_folder, opts.font_location)
-    # hanzi_df = get_hanzi_list(opts)
-    wikipedia_ds = load_wikipedia_data(opts)
+    wikipedia_ds = load_wikipedia_data(opts.data_folder, opts.zh_wiki_location)
 
-    if (
-        's' not in opts.hanzi_styles.lower()
-        and 't' not in opts.hanzi_styles.lower()
-    ):
+    if "s" not in opts.hanzi_styles.lower() and "t" not in opts.hanzi_styles.lower():
         print(
             "ERROR: Either 'S' (Simplified) or 'T' (Traditional) has to be included in the '--hanzi_styles' flag"
         )
@@ -190,7 +189,8 @@ def write_images(opts):
     # trial_counter = 5
     # We'll initialize our rng and traditional to simplified chinese converter
     rng = np.random.default_rng(opts.random_seed)
-    converter = opencc.OpenCC("t2s.json")
+    simplified_converter = opencc.OpenCC("t2s.json")
+    traditional_converter = opencc.OpenCC("s2t.json")
 
     # Weĺl load each font and iterate through our previously generated character list
     for font_name in fonts:
@@ -198,9 +198,7 @@ def write_images(opts):
         if "reserved" in font_name:
             continue
         font = ImageFont.truetype(
-            font=os.path.join(
-                root, opts.data_folder, opts.font_location, font_name
-            ),
+            font=os.path.join(root, opts.data_folder, opts.font_location, font_name),
             size=opts.character_size,
         )
 
@@ -216,13 +214,14 @@ def write_images(opts):
         )
         font_subset = wikipedia_ds.select(random_entries)
         for wiki_page in font_subset:
-            # for wiki_page in wikipedia_ds:
             # We'll obtain the parts of the page we need, we'll keep the page id for the manifest and the markdown for the text
             pid = wiki_page["pageid"]
             pmd = wiki_page["markdown"]
 
             # We'll clean the text as much as possible from formatting artifacts
-            cleaned_split_text = clean_entry_text(pmd, opts.hanzi_styles, converter)
+            cleaned_split_text = clean_entry_text(
+                pmd, opts.hanzi_styles, simplified_converter, traditional_converter
+            )
 
             # Depending on the parameters given we will have more than one script type (traditional and simplified), we'll render an image for each
             for script_type_splits in cleaned_split_text:
@@ -302,7 +301,9 @@ def write_images(opts):
         if not os.path.exists(
             os.path.join(root, opts.data_folder, opts.manifest_save_location)
         ):
-            os.makedirs(os.path.join(root, opts.data_folder, opts.manifest_save_location))
+            os.makedirs(
+                os.path.join(root, opts.data_folder, opts.manifest_save_location)
+            )
         manifest_df.to_csv(
             os.path.join(
                 root, opts.data_folder, opts.manifest_save_location, opts.manifest_name
@@ -424,9 +425,10 @@ def main():
 
     parser.add_argument(
         "--hanzi_styles",
-        type=str,
-        default='S',
-        help="Which hanzi types to include: S - Simplified, T - Traditional, both can be included in any order, and with any capitalization, any other letters will be ignored",
+        type=str.lower,
+        choices=["s", "t", "st", "ts"],
+        required=True,
+        help="Which hanzi types to include: S - Simplified, T - Traditional, both can be included in any order, and with any capitalization",
     )
 
     parser.add_argument(
@@ -437,7 +439,9 @@ def main():
     )
 
     opts = parser.parse_args()
-    utils.delete_images(opts.data_folder, opts.img_save_location, opts.manifest_save_location)
+    utils.delete_images(
+        opts.data_folder, opts.img_save_location, opts.manifest_save_location
+    )
     write_images(opts)
 
 

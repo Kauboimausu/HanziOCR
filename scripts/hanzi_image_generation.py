@@ -9,14 +9,18 @@ from PIL import Image, ImageDraw, ImageFont
 from hanzi_ocr import utils
 
 
-def get_hanzi_list(opts) -> pd.DataFrame:
+def get_hanzi_list(data_folder, hanzi_location, hanzi_file_name) -> pd.DataFrame:
     """
     Reads the csv in which the hanzis are stored and returns the dataframe
 
     Parameters
     ----------
-    opts: argparse.Namespace
-    Parameters given by the user
+    data_folder: str
+        Root folder for project data
+    hanzi_location: str
+        Folder containing the hanzi vocabulary list
+    hanzi_file_name: str
+        Name of the csv file with the hanzi vocabulary list
 
     Returns
     ---------
@@ -24,9 +28,7 @@ def get_hanzi_list(opts) -> pd.DataFrame:
     """
     root = utils.find_project_root()
     hanzi_df = pd.read_csv(
-        os.path.join(
-            root, opts.data_folder, opts.hanzi_location, opts.hanzi_file_name
-        ),
+        os.path.join(root, data_folder, hanzi_location, hanzi_file_name),
         index_col="codepoint",
     )
     return hanzi_df
@@ -67,7 +69,9 @@ def write_images(opts):
 
     # We'll get the list of saved fonts and iterate through them
     fonts = utils.get_fonts_list(opts.data_folder, opts.font_location)
-    hanzi_df = get_hanzi_list(opts)
+    hanzi_df = get_hanzi_list(
+        opts.data_folder, opts.hanzi_location, opts.hanzi_file_name
+    )
 
     if "s" not in opts.hanzi_styles.lower() and "t" not in opts.hanzi_styles.lower():
         print(
@@ -251,9 +255,10 @@ def main():
 
     parser.add_argument(
         "--hanzi_styles",
-        type=str,
-        default="S",
-        help="Which hanzi types to include: S - Simplified, T - Traditional, both can be included in any order, and with any capitalization, any other letters will be ignored",
+        type=str.lower,
+        choices=["s", "t", "st", "ts"],
+        required=True,
+        help="Which hanzi types to include: S - Simplified, T - Traditional, both can be included in any order, and with any capitalization",
     )
 
     opts = parser.parse_args()
