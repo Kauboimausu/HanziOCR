@@ -45,10 +45,10 @@ def take_wiki_excerpt(wiki_entry, excerpt_min_length, excerpt_max_length, random
     elif excerpt_min_length == len(wiki_entry):
         return wiki_entry
     excerpt_length = random.integers(
-        excerpt_min_length, min(excerpt_max_length, len(wiki_entry))
+        excerpt_min_length, min(excerpt_max_length + 1, len(wiki_entry))
     )
 
-    start_pointer = random.integers(0, len(wiki_entry) - excerpt_length + 1)
+    start_pointer = random.integers(0, len(wiki_entry) - excerpt_length)
 
     return wiki_entry[start_pointer : (start_pointer + excerpt_length)]
 
