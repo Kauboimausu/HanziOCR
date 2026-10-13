@@ -2,7 +2,9 @@
 data
 
 # Files Cache
-src/hanzi_ocr/__pycache__/
+*/__pycache__/
+*/*/__pycache__/
+
 
 # Notebook for testing scripts
 scripts/test.ipynb
