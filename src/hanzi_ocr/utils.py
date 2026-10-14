@@ -112,15 +112,17 @@ def is_hanzi(character):
     return any(
         start <= ord(character) <= end
         for start, end in [
-            (ord("\u3300"), ord("\u33ff")),
-            (ord("\ufe30"), ord("\ufe4f")),
-            (ord("\uf900"), ord("\ufaff")),
-            (ord("\U0002f800"), ord("\U0002fa1f")),
-            (ord("\u4e00"), ord("\u9fff")),
-            (ord("\u3400"), ord("\u4dbf")),
-            (ord("\U00020000"), ord("\U0002a6df")),
-            (ord("\U0002a700"), ord("\U0002b73f")),
-            (ord("\U0002b740"), ord("\U0002b81f")),
-            (ord("\U0002b820"), ord("\U0002ceaf")),
+            (0x4E00, 0x9FFF),  # CJK Unified Ideographs
+            (0x3400, 0x4DBF),  # Extension A
+            (0x20000, 0x2A6DF),  # Extension B
+            (0x2A700, 0x2B73F),  # Extension C
+            (0x2B740, 0x2B81F),  # Extension D
+            (0x2B820, 0x2CEAF),  # Extension E
+            (0x2CEB0, 0x2EBEF),  # Extension F
+            (0x2EBF0, 0x2EE5F),  # Extension I
+            (0x30000, 0x3134F),  # Extension G
+            (0x31350, 0x323AF),  # Extension H
+            (0xF900, 0xFAFF),  # CJK Compatibility Ideographs
+            (0x2F800, 0x2FA1F),  # CJK Compatibility Ideographs Supplement
         ]
     )
