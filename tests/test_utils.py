@@ -2,9 +2,13 @@ import argparse
 
 import pytest
 
-import os
-
-from hanzi_ocr.utils import find_project_root, get_fonts_list, is_hanzi, str2bool, delete_images
+from hanzi_ocr.utils import (
+    delete_images,
+    find_project_root,
+    get_fonts_list,
+    is_hanzi,
+    str2bool,
+)
 
 
 @pytest.mark.parametrize("char, expected", [
