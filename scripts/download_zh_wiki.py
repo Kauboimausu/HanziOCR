@@ -1,7 +1,10 @@
-from datasets import load_dataset
 import argparse
 import os
+
+from datasets import load_dataset
+
 from hanzi_ocr import utils
+
 
 def save_dataset(root, opts):
     """
