@@ -85,24 +85,17 @@ def delete_images(root, data_folder, image_location, manifest_location):
 
     for filename in os.listdir(imgs_folder):
         file_path = os.path.join(imgs_folder, filename)
-        try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)
-        except ReferenceError as e:
-            print(f"Failed to delete {file_path}. Reason: {e}")
+        if os.path.isfile(file_path) or os.path.islink(file_path):
+            os.unlink(file_path)
+        elif os.path.isdir(file_path):
+            shutil.rmtree(file_path)
 
-    manifest_folder = os.path.join(root, data_folder, manifest_location)
     for filename in os.listdir(manifest_folder):
         file_path = os.path.join(manifest_folder, filename)
-        try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)
-        except ReferenceError as e:
-            print(f"Failed to delete {file_path}. Reason: {e}")
+        if os.path.isfile(file_path) or os.path.islink(file_path):
+            os.unlink(file_path)
+        elif os.path.isdir(file_path):
+            shutil.rmtree(file_path)
 
 
 # Source - https://stackoverflow.com/a/37311125
