@@ -1,6 +1,17 @@
-from torch.nn import Module, Conv2d, ReLU, MaxPool2d, Flatten, Dropout, Linear, BatchNorm2d, BatchNorm1d
-from torch.nn.init import kaiming_normal_, zeros_
 import torch
+from torch.nn import (
+    BatchNorm1d,
+    BatchNorm2d,
+    Conv2d,
+    Dropout,
+    Flatten,
+    Linear,
+    MaxPool2d,
+    Module,
+    ReLU,
+)
+from torch.nn.init import kaiming_normal_, zeros_
+
 
 class HMNISTModel(Module):
     def __init__(self, n_classes):
@@ -41,7 +52,7 @@ class HMNISTModel(Module):
 
         # Weight initialization
         for mod in self.modules():
-            if isinstance(mod, Conv2d) or isinstance(mod, Linear):
+            if isinstance(mod, (Conv2d, Linear)):
                 kaiming_normal_(mod.weight, nonlinearity="relu")
                 if mod.bias is not None:
                     zeros_(mod.bias)
