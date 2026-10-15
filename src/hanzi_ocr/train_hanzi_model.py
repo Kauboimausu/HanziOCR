@@ -36,6 +36,7 @@ def make_checkpoint_path(root, data_folder, model_name):
 
     return checkpoint_folder
 
+
 def train_model(root, opts):
     """Trains the model according to the hyperparameters given"""
 
@@ -46,20 +47,22 @@ def train_model(root, opts):
     hanzi_df = pd.read_csv(csv_path)
     le = LabelEncoder()
     le.fit(hanzi_df["codepoint"])
-    
+
     model_save_location = make_checkpoint_path(root, opts.data_folder, opts.model_name)
     checkpoint_path = os.path.join(model_save_location, "checkpoint.pt")
     json_save_path = os.path.join(model_save_location, "le.json")
-    train_hyperparameters_path = os.path.join(model_save_location, "train_hyperparameters.json")
-    
+    train_hyperparameters_path = os.path.join(
+        model_save_location, "train_hyperparameters.json"
+    )
+
     with open(json_save_path, "w") as jsonfile:
         json.dump(le.classes_.tolist(), jsonfile, indent=4)
-    
+
     with open(train_hyperparameters_path, "w") as jsonfile:
         json.dump(vars(opts), jsonfile, indent=4)
 
     imgs_folder_path = os.path.join(root, opts.data_folder, opts.imgs_folder)
-    
+
     device = get_device()
     num_classes = len(le.classes_)
 
@@ -114,7 +117,7 @@ def train_model(root, opts):
     normalization_pipeline = A.Compose(
         [
             A.Resize(64, 64),
-            A.Normalize(mean=0.5, std= 0.5, max_pixel_value=255),
+            A.Normalize(mean=0.5, std=0.5, max_pixel_value=255),
             ToTensorV2(),
         ]
     )
@@ -140,14 +143,21 @@ def train_model(root, opts):
     )
 
     rng = torch.Generator().manual_seed(opts.random_seed)
-    train_loader = DataLoader(train_ds, opts.batch_size, shuffle=True, generator=rng)
+    train_loader = DataLoader(
+        train_ds, opts.batch_size, shuffle=True, generator=rng, drop_last=True
+    )
     valid_loader = DataLoader(valid_ds, opts.batch_size, shuffle=False)
-    
+
     match opts.scheduler:
         case "performance":
             scheduler = ReduceLROnPlateau(optimizer, mode="max")
         case "onecycle":
-            scheduler = OneCycleLR(optimizer, max_lr=opts.lr, epochs=opts.epochs, steps_per_epoch=len(train_loader))
+            scheduler = OneCycleLR(
+                optimizer,
+                max_lr=opts.lr,
+                epochs=opts.epochs,
+                steps_per_epoch=len(train_loader),
+            )
         case None:
             scheduler = None
 
@@ -176,13 +186,13 @@ def main():
         default="adamw",
         help="The name of the optimizer that will be used during training, one of 'Adam', 'AdamW', 'NAG', or 'Momentum'",
     )
-    
+
     parser.add_argument(
         "--scheduler",
         type=str.lower,
         choices=["performance", "onecycle"],
         default=None,
-        help="The type of scheduler that will be used during training, one of 'Performance', 'OneCycle', or 'None'"
+        help="The type of scheduler that will be used during training, one of 'Performance', 'OneCycle', or 'None'",
     )
 
     parser.add_argument(
