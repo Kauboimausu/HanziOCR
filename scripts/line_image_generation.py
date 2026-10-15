@@ -125,7 +125,7 @@ def clean_entry_text(
     wiki_entry = wiki_entry.replace("**", "")
     wiki_entry = wiki_entry.replace("__", "")
     wiki_entry = wiki_entry.replace("##", "")
-    wiki_entry = re.sub(r"\$.+\$", "", wiki_entry)
+    wiki_entry = re.sub(r"\$\$[^$]*\$\$|\$[^$]*\$", "", wiki_entry)
     wiki_entry = wiki_entry.replace("「!」", "")
     wiki_entry = wiki_entry.replace("( ! )", "")
     wiki_entry = wiki_entry.replace("「?」", "")
