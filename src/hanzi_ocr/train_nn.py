@@ -131,7 +131,7 @@ def train_with_early_stopping(
         if isinstance(scheduler, ReduceLROnPlateau):
             scheduler.step(valid_metric)
 
-        if valid_metric >= best_valid_metric:
+        if valid_metric > best_valid_metric:
             epochs_without_improvement = 0
             best_valid_metric = valid_metric
             torch.save(model.state_dict(), checkpoint_path)
