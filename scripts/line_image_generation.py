@@ -44,17 +44,16 @@ def take_wiki_excerpt(wiki_entry, excerpt_min_length, excerpt_max_length, random
         raise ValueError("The minimum length cannot be higher than the maximum length")
     elif wiki_entry is None or excerpt_min_length > len(wiki_entry):
         return None
-    elif excerpt_min_length == len(wiki_entry):
-        return wiki_entry
+    
     excerpt_length = random.integers(
         excerpt_min_length,
         min(excerpt_max_length, len(wiki_entry)),
         endpoint=True,
     )
 
-    start_pointer = random.integers(0, len(wiki_entry) - excerpt_length)
+    start_pointer = random.integers(0, len(wiki_entry) - excerpt_length, endpoint=True)
 
-    return wiki_entry[start_pointer : (start_pointer + excerpt_length) + 1]
+    return wiki_entry[start_pointer : (start_pointer + excerpt_length)]
 
 
 def get_excerpt_hanzi_proportion(excerpt):
