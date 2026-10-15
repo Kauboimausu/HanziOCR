@@ -136,7 +136,7 @@ def clean_entry_text(
         simplified_entry = simplified_converter.convert(wiki_entry)
         simplified_splits = simplified_entry.split("\n")
 
-        traditional_entry = simplified_converter.convert(wiki_entry)
+        traditional_entry = traditional_converter.convert(wiki_entry)
         traditional_splits = traditional_entry.split("\n")
 
         return [(simplified_splits, "simplified"), (traditional_splits, "traditional")]
@@ -146,7 +146,7 @@ def clean_entry_text(
 
         return [(simplified_splits, "simplified")]
     elif "t" in hanzi_styles.lower():
-        traditional_entry = simplified_converter.convert(wiki_entry)
+        traditional_entry = traditional_converter.convert(wiki_entry)
         traditional_splits = traditional_entry.split("\n")
 
         return [(traditional_splits, "traditional")]
