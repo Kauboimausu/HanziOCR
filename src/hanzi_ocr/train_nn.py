@@ -91,7 +91,7 @@ def train_with_early_stopping(
     """
     
 
-    best_valid_metric = 0.0
+    best_valid_metric = -1.0
     epochs_without_improvement = 0
     history = {
         "train_losses": [],
