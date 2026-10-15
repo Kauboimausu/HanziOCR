@@ -53,16 +53,16 @@ class SynthethicHanziDataset(Dataset):
         in_validation = hanzi_df["font"].map(font_stem).isin(validation_fonts)
 
         self.split = split.lower()
-        if split == "train":
+        if self.split == "train":
             self.hanzi_df = hanzi_df[~in_validation]
             if len(self.hanzi_df) == 0:
                 raise ValueError("There are no samples in the train set")
-        elif split == "valid":
+        elif self.split == "valid":
             self.hanzi_df = hanzi_df[in_validation]
             if len(self.hanzi_df) == 0:
                 raise ValueError("There are no samples in the validation set")
         else: 
-            raise ValueError("This dataset only has train and validation splits")
+            raise ValueError("This dataset only has train and validation")
         self.img_dir = img_dir
         self.le = le
         self.augmentation_pipeline = augmentation_pipeline
