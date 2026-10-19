@@ -83,7 +83,6 @@ class SynthethicHanziDataset(Dataset):
         char_codepoint = self.hanzi_df["codepoint"].iloc[index]
 
         if self.split == "train" and self.augmentation_pipeline is not None:
-            # image = self.augmentation_pipeline(image) torchvision transform
             image = self.augmentation_pipeline(image=image)["image"]  # albumentations
 
         image = self.normalization_pipeline(image=image)["image"]
