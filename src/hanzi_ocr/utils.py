@@ -1,7 +1,10 @@
 import argparse
 import os
 import shutil
+from math import ceil
 from pathlib import Path
+
+from PIL import Image, ImageDraw
 
 
 def find_project_root():
@@ -126,3 +129,41 @@ def is_hanzi(character):
             (0x2F800, 0x2FA1F),  # CJK Compatibility Ideographs Supplement
         ]
     )
+
+
+def render_text(text, font, width_padding, height_padding):
+    """
+    Renders text, a single character or a whole line, black on a white background
+
+    Parameters
+    ----------
+    text: str
+        Text that will be rendered in the image
+    font: PIL.ImageFont.FreeTypeFont
+        Loaded font in which the text will be written
+    width_padding: int
+        Padding, in pixels, added on the left and right of the text
+    height_padding: int
+        Padding, in pixels, added above and below the text
+
+    Returns
+    ----------
+    PIL.Image.Image
+        RGB image with the rendered text, sized to fit the text plus the padding
+    """
+    left, top, right, bottom = font.getbbox(text)
+    # The image is as big as the text's bounding box plus the padding on each side
+    required_width = ceil(abs((right - left) + 2 * width_padding))
+    img_height = ceil(abs((bottom - top) + 2 * height_padding))
+    img = Image.new("RGB", (required_width, img_height), "white")
+    draw = ImageDraw.Draw(img)
+    draw.text(
+        (width_padding, img_height / 2),
+        text=text,
+        font=font,
+        fill="black",
+        anchor="lm",
+        align="left",
+    )
+
+    return img

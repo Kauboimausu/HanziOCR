@@ -1,14 +1,13 @@
 import argparse
 import os
 import re
-from math import ceil
 
 import numpy as np
 import opencc
 import pandas as pd
 from datasets import Dataset, load_from_disk
 from fontTools.ttLib import TTFont
-from PIL import Image, ImageDraw, ImageFont
+from PIL import ImageFont
 
 from hanzi_ocr import utils
 
@@ -262,27 +261,13 @@ def write_images(root, opts):
                             ]
                             renderable = False
 
-                    # Otherwise we will render the character
-                    # Before creating the image we'll see how much space we need to fit the text
+                    # Otherwise we will render the excerpt
                     if renderable:
-                        left, top, right, bottom = font.getbbox(excerpt)
-                        # we'll calculate the required dimensions from the results, and we'll add a little wiggle room
-                        required_width = ceil(
-                            abs((right - left) + 2 * opts.width_padding)
-                        )
-                        img_height = ceil(abs((bottom - top) + 2 * opts.height_padding))
-                        img1 = Image.new("RGB", (required_width, img_height), "white")
-                        draw1 = ImageDraw.Draw(img1)
-                        draw1.text(
-                            (opts.width_padding, img_height / 2),
-                            text=excerpt,
-                            font=font,
-                            fill="black",
-                            anchor="lm",
-                            align="left",
+                        img = utils.render_text(
+                            excerpt, font, opts.width_padding, opts.height_padding
                         )
                         file_name = f"{pid}_{split_num}_{script_name}_{font_name}.png"
-                        img1.save(
+                        img.save(
                             os.path.join(
                                 root,
                                 opts.data_folder,

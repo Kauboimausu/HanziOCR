@@ -1,10 +1,9 @@
 import argparse
 import os
-from math import ceil
 
 import pandas as pd
 from fontTools.ttLib import TTFont
-from PIL import Image, ImageDraw, ImageFont
+from PIL import ImageFont
 
 from hanzi_ocr import utils
 
@@ -33,43 +32,6 @@ def get_hanzi_list(root, data_folder, hanzi_location, hanzi_file_name) -> pd.Dat
         index_col="codepoint",
     )
     return hanzi_df
-
-
-def render_character(char, font, width_padding, height_padding):
-    """Renders a character
-
-    Parameters
-    ------------
-    char: str
-        Character that will be rendered in the image
-    font: FreeTypeFont
-    A loaded font in which the character will be written
-    width_padding: int
-    Padding on the left added to the image
-    height: int
-    Height of the image, in pixels
-
-    Returns
-    ----------------
-    Pillow.Image:
-        Image with the rendered character
-    """
-    left, top, right, bottom = font.getbbox(char)
-    # we'll calculate the required dimensions from the results, and we'll add a little wiggle room
-    required_width = ceil(abs((right - left) + 2 * width_padding))
-    img_height = ceil(abs((bottom - top) + 2 * height_padding))
-    img = Image.new("RGB", (required_width, img_height), "white")
-    draw = ImageDraw.Draw(img)
-    draw.text(
-        (width_padding, img_height / 2),
-        text=char,
-        font=font,
-        fill="black",
-        anchor="lm",
-        align="left",
-    )
-
-    return img
 
 
 def write_images(root, opts):
@@ -148,7 +110,9 @@ def write_images(root, opts):
                 if not utils.is_hanzi(char):
                     continue
                 if ord(char) in font_cmap:
-                    img = render_character(char, font, opts.width_padding, opts.height_padding)
+                    img = utils.render_text(
+                        char, font, opts.width_padding, opts.height_padding
+                    )
                     file_name = f"{ord(char)}_{script_name}_{font_name}.png"
                     img.save(
                         os.path.join(
