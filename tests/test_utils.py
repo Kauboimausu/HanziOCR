@@ -1,12 +1,15 @@
 import argparse
 
+import numpy as np
 import pytest
+from PIL import ImageFont
 
 from hanzi_ocr.utils import (
     delete_images,
     find_project_root,
     get_fonts_list,
     is_hanzi,
+    render_text,
     str2bool,
 )
 
@@ -140,3 +143,57 @@ def test_get_fonts_list_lists_folder_contents(tmp_path):
     (fonts / "B.otf").touch()
 
     assert sorted(get_fonts_list(tmp_path, "data", "fonts")) == ["A.ttf", "B.otf"]
+
+@pytest.fixture(scope="module")
+def font():
+    """A real font from the project, it's only read, never modified"""
+    font_path = find_project_root() / "data" / "fonts" / "ZCOOLKuaiLe-Regular.ttf"
+    return ImageFont.truetype(str(font_path), size=100)
+
+
+def test_render_text_returns_rgb_image(font):
+    assert render_text("中", font, 50, 50).mode == "RGB"
+
+
+def test_render_text_single_character_is_roughly_square(font):
+    width, height = render_text("中", font, 50, 50).size
+    assert 0.75 < width / height < 1.33
+
+
+def test_render_text_line_is_wider_than_tall(font):
+    width, height = render_text("这是一个测试", font, 50, 50).size
+    assert width > 3 * height
+
+
+def test_render_text_corners_are_white(font):
+    pixels = np.array(render_text("中", font, 50, 50))
+    for corner in (pixels[0, 0], pixels[0, -1], pixels[-1, 0], pixels[-1, -1]):
+        assert corner.tolist() == [255, 255, 255]
+
+
+def test_render_text_draws_black_pixels(font):
+    pixels = np.array(render_text("中", font, 50, 50))
+    assert (pixels == 0).all(axis=-1).any()
+
+
+def test_render_text_text_stays_inside_the_padding(font):
+    pixels = np.array(render_text("中", font, 50, 50))
+    padding = 40  # a bit less than the real padding, to allow for antialiasing
+    assert (pixels[:padding] == 255).all()
+    assert (pixels[-padding:] == 255).all()
+    assert (pixels[:, :padding] == 255).all()
+    assert (pixels[:, -padding:] == 255).all()
+
+
+def test_render_text_width_grows_with_width_padding(font):
+    narrow = render_text("中", font, 50, 50)
+    wide = render_text("中", font, 60, 50)
+    assert wide.width - narrow.width == 20
+    assert wide.height == narrow.height
+
+
+def test_render_text_height_grows_with_height_padding(font):
+    short = render_text("中", font, 50, 50)
+    tall = render_text("中", font, 50, 60)
+    assert tall.height - short.height == 20
+    assert tall.width == short.width
