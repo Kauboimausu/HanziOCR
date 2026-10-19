@@ -8,7 +8,7 @@ from opencc import OpenCC
 from sklearn.preprocessing import LabelEncoder
 from torch import softmax
 
-from hanzi_ocr.HMNIST import HMNISTModel
+from hanzi_ocr.hanzi_model import HanziModel
 from hanzi_ocr.pipelines import normalization_pipeline
 
 
@@ -40,7 +40,7 @@ def load_model(model_dir, device):
     le = LabelEncoder()
     le.classes_ = np.array(classes)
 
-    model = HMNISTModel(len(classes))
+    model = HanziModel(len(classes))
     model.load_state_dict(state_dict)
     model.eval()
     model = model.to(device)

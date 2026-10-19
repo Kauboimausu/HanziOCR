@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 import torch
 
-from hanzi_ocr.HMNIST import HMNISTModel
+from hanzi_ocr.hanzi_model import HanziModel
 from hanzi_ocr.model_inference import (
     create_character_transformers,
     find_character_pairs,
@@ -72,7 +72,7 @@ CODEPOINTS = [ord("中"), ord("文"), ord("字")]
 
 @pytest.fixture 
 def model_dir(tmp_path):
-    model = HMNISTModel(len(CODEPOINTS))
+    model = HanziModel(len(CODEPOINTS))
     torch.save(model.state_dict(), tmp_path / "checkpoint.pt")
     (tmp_path / "le.json").write_text(json.dumps(CODEPOINTS))
     return tmp_path

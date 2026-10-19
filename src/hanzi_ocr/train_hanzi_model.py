@@ -12,7 +12,7 @@ from torch.optim.lr_scheduler import OneCycleLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
 from hanzi_ocr import utils
-from hanzi_ocr.HMNIST import HMNISTModel
+from hanzi_ocr.hanzi_model import HanziModel
 from hanzi_ocr.pipelines import augmentation_pipeline, normalization_pipeline
 from hanzi_ocr.SyntheticHanziDataset import SynthethicHanziDataset
 from hanzi_ocr.train_nn import train_with_early_stopping
@@ -65,7 +65,7 @@ def train_model(root, opts):
     device = get_device()
     num_classes = len(le.classes_)
 
-    model = HMNISTModel(num_classes).to(device)
+    model = HanziModel(num_classes).to(device)
 
     match opts.optimizer:
         case "adam":

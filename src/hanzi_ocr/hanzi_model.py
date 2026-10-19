@@ -13,7 +13,7 @@ from torch.nn import (
 from torch.nn.init import kaiming_normal_, zeros_
 
 
-class HMNISTModel(Module):
+class HanziModel(Module):
     def __init__(self, n_classes):
         super().__init__()
 
