@@ -17,8 +17,8 @@ def augmentation_pipeline(random_state):
         seed=random_state,
     )   
 
-
-normalization_pipeline = A.Compose(
+def normalization_pipeline():
+    return A.Compose(
     [
         A.Resize(64, 64),
         A.Normalize(mean=0.5, std=0.5, max_pixel_value=255),
