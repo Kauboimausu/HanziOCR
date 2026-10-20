@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 
 import pandas as pd
@@ -6,6 +7,7 @@ from fontTools.ttLib import TTFont
 from PIL import ImageFont
 
 from hanzi_ocr import utils
+from hanzi_ocr.utils import GENERATION_PARAMETERS_NAME
 
 
 def get_hanzi_list(root, data_folder, hanzi_location, hanzi_file_name) -> pd.DataFrame:
@@ -34,6 +36,20 @@ def get_hanzi_list(root, data_folder, hanzi_location, hanzi_file_name) -> pd.Dat
     return hanzi_df
 
 
+def get_font_weights(font, wanted_weights):
+    """Returns the weights the font will render"""
+    try: 
+        available = [name.decode() for name in font.get_variation_names()]
+    except OSError:
+        return [None]
+    available_weights = [available_weight for available_weight in available if available_weight in wanted_weights]
+    if len(available_weights):
+        return available_weights
+    else:
+        return [None]
+
+
+
 def write_images(root, opts):
     """
     Generates the training images by loading each font stored locally,
@@ -57,7 +73,7 @@ def write_images(root, opts):
 
     # We want to generate a manifest to keep track of what character, font, size, etc is being generated on each file.
     manifest_df = pd.DataFrame(
-        columns=["file name", "codepoint", "text", "font", "type"]
+        columns=["file name", "codepoint", "text", "font", "weight", "type"]
     )
     # We'll also generate a manifest for the characters that were not able to be rendered
     error_manifest_df = pd.DataFrame(columns=["codepoint", "text", "font", "type"])
@@ -85,57 +101,58 @@ def write_images(root, opts):
         # reserved is the name for fonts that i dont want to render yet
         if "reserved" in font_name:
             continue
-        font = ImageFont.truetype(
-            font=os.path.join(
-                root, opts.data_folder, opts.font_location, font_name
-            ),
-            size=opts.character_size,
-        )
-
-        tfont = TTFont(
-            os.path.join(root, opts.data_folder, opts.font_location, font_name)
-        )
+        font_path = os.path.join(root, opts.data_folder, opts.font_location, font_name)
+        font = ImageFont.truetype(font=font_path, size=opts.character_size)
+        tfont = TTFont(font_path)
         font_cmap = tfont.getBestCmap()
-        print(f"Generating images for font {font_name}")
-        for _, row in hanzi_df.iterrows():
-            for script in opts.hanzi_styles:
-                if script.lower() == "s":
-                    script_name = "simplified"
-                elif script.lower() == "t":
-                    script_name = "traditional"
-                else:
-                    continue
 
-                char = row[script_name]
-                if not utils.is_hanzi(char):
-                    continue
-                if ord(char) in font_cmap:
-                    img = utils.render_text(
-                        char, font, opts.width_padding, opts.height_padding
-                    )
-                    file_name = f"{ord(char)}_{script_name}_{font_name}.png"
-                    img.save(
-                        os.path.join(
-                            root,
-                            opts.data_folder,
-                            opts.image_save_location,
-                            file_name,
+        font_variations = get_font_weights(font, opts.font_weights)
+        for variation in font_variations:
+            if variation is not None:
+                font.set_variation_by_name(variation)
+            variation_name = variation or "default"
+            print(f"Generating images for font {font_name} {variation_name}")
+            for _, row in hanzi_df.iterrows():
+                for script in opts.hanzi_styles:
+                    if script.lower() == "s":
+                        script_name = "simplified"
+                    elif script.lower() == "t":
+                        script_name = "traditional"
+                    else:
+                        continue
+
+                    char = row[script_name]
+                    if not utils.is_hanzi(char):
+                        continue
+                    if ord(char) in font_cmap:
+                        img = utils.render_text(
+                            char, font, opts.width_padding, opts.height_padding
                         )
-                    )
-                    manifest_df.loc[len(manifest_df)] = [
-                        file_name,
-                        ord(char),
-                        char,
-                        font_name,
-                        script_name,
-                    ]
-                else:
-                    error_manifest_df.loc[len(error_manifest_df)] = [
-                        ord(char),
-                        char,
-                        font_name,
-                        script_name,
-                    ]
+                        file_name = f"{ord(char)}_{script_name}_{font_name}_{variation_name}.png"
+                        img.save(
+                            os.path.join(
+                                root,
+                                opts.data_folder,
+                                opts.image_save_location,
+                                file_name,
+                            )
+                        )
+                        manifest_df.loc[len(manifest_df)] = [
+                            file_name,
+                            ord(char),
+                            char,
+                            font_name,
+                            variation_name,
+                            script_name,
+                        ]
+                    else:
+                        error_manifest_df.loc[len(error_manifest_df)] = [
+                            ord(char),
+                            char,
+                            font_name,
+                            script_name,
+                        ]
+                        break
         print("Done")
 
     # At the end we'll save our manifest df as a csv, this is important since this stores our ys for each X, the X being the image
@@ -162,6 +179,17 @@ def write_images(root, opts):
         ),
         index=False,
     )
+    # We save the parameters used to generate the images next to the manifest, training copies them into the model's folder
+    with open(
+        os.path.join(
+            root,
+            opts.data_folder,
+            opts.manifest_save_location,
+            GENERATION_PARAMETERS_NAME,
+        ),
+        "w",
+    ) as jsonfile:
+        json.dump(vars(opts), jsonfile, indent=4)
 
 
 def main():
@@ -249,6 +277,14 @@ def main():
         choices=["s", "t", "st", "ts"],
         required=True,
         help="Which hanzi types to include: S - Simplified, T - Traditional, both can be included in any order, and with any capitalization",
+    )
+
+    parser.add_argument(
+        "--font_weights",
+        type=str,
+        nargs="+",
+        default=["Light", "Regular", "Bold"],
+        help="Weights rendered for variable fonts, written as the font names them, e.g. Light Regular Bold. Fonts with a single weight are rendered once regardless",
     )
 
     opts = parser.parse_args()
