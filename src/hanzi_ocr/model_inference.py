@@ -85,6 +85,8 @@ def preprocess_image(image_bytes):
     """
 
     array = np.frombuffer(image_bytes, dtype=np.uint8)
+    if len(array) == 0:
+        raise ValueError("Image was not uploaded correctly")
     image = cv2.imdecode(array, cv2.IMREAD_GRAYSCALE)
     if image is None:
         raise ValueError("Image invalid, try uploading it again")
@@ -158,7 +160,7 @@ def inference(model, le, batch, top_k, simplified_converter, traditional_convert
     probs = softmax(logits, dim=-1)
     probs = torch.squeeze(probs)
 
-    if top_k > len(le.classes):
+    if top_k > len(le.classes_):
         raise ValueError("You're asking for more results than there are classes")
     elif top_k < 1:
         raise ValueError("You need at least to get the top prediction")
@@ -167,6 +169,8 @@ def inference(model, le, batch, top_k, simplified_converter, traditional_convert
 
     original_characters = le.inverse_transform(batch_indices)
     original_characters = [chr(char) for char in original_characters]
-    top_predictions = find_character_pairs(original_characters, simplified_converter, traditional_converter)
+    top_predictions = find_character_pairs(
+        original_characters, simplified_converter, traditional_converter
+    )
 
     return list(zip(batch_values, top_predictions))
