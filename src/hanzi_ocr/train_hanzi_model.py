@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import shutil
 
 import pandas as pd
 import torch
@@ -15,7 +16,11 @@ from hanzi_ocr import utils
 from hanzi_ocr.hanzi_model import HanziModel
 from hanzi_ocr.pipelines import augmentation_pipeline, normalization_pipeline
 from hanzi_ocr.SyntheticHanziDataset import SynthethicHanziDataset
-from hanzi_ocr.train_nn import train_with_early_stopping
+from hanzi_ocr.train_nn import (
+    MONITORS,
+    plot_training_history,
+    train_with_early_stopping,
+)
 
 
 def get_device():
@@ -59,6 +64,20 @@ def train_model(root, opts):
 
     with open(train_hyperparameters_path, "w") as jsonfile:
         json.dump(vars(opts), jsonfile, indent=4)
+
+    # Keeps a record of how the training data was generated next to the model trained on it
+    generation_parameters_path = os.path.join(
+        root, opts.data_folder, opts.manifest_folder, utils.GENERATION_PARAMETERS_NAME
+    )
+    if os.path.exists(generation_parameters_path):
+        shutil.copy(
+            generation_parameters_path,
+            os.path.join(model_save_location, "data_generation_parameters.json"),
+        )
+    else:
+        print(
+            f"WARNING: {generation_parameters_path} not found, the model folder will not record how its data was generated"
+        )
 
     imgs_folder_path = os.path.join(root, opts.data_folder, opts.imgs_folder)
 
@@ -105,8 +124,8 @@ def train_model(root, opts):
         "train",
         le,
         validation_fonts=opts.holdout_fonts,
-        normalization_pipeline=normalization_pipeline,
-        augmentation_pipeline=augmentation_pipeline,
+        normalization_pipeline=normalization_pipeline(),
+        augmentation_pipeline=augmentation_pipeline(opts.random_seed),
     )
 
     valid_ds = SynthethicHanziDataset(
@@ -115,7 +134,7 @@ def train_model(root, opts):
         "valid",
         le,
         opts.holdout_fonts,
-        normalization_pipeline=normalization_pipeline,
+        normalization_pipeline=normalization_pipeline(),
         augmentation_pipeline=None,
     )
 
@@ -127,7 +146,9 @@ def train_model(root, opts):
 
     match opts.scheduler:
         case "performance":
-            scheduler = ReduceLROnPlateau(optimizer, mode="max")
+            # Follows the same quantity as early stopping: "max" for the metric, "min" for the loss
+            _, monitor_mode = MONITORS[opts.early_stopping_monitor]
+            scheduler = ReduceLROnPlateau(optimizer, mode=monitor_mode)
         case "onecycle":
             scheduler = OneCycleLR(
                 optimizer,
@@ -138,7 +159,7 @@ def train_model(root, opts):
         case None:
             scheduler = None
 
-    train_with_early_stopping(
+    history = train_with_early_stopping(
         device,
         model,
         train_loader=train_loader,
@@ -150,6 +171,18 @@ def train_model(root, opts):
         checkpoint_path=checkpoint_path,
         epochs=opts.epochs,
         patience=opts.patience_epochs,
+        monitor=opts.early_stopping_monitor,
+    )
+
+    with open(os.path.join(model_save_location, "training_history.json"), "w") as jsonfile:
+        json.dump(history, jsonfile, indent=4)
+
+    plot_training_history(
+        history,
+        os.path.join(model_save_location, "training_history.png"),
+        metric_name=opts.metric,
+        monitor=opts.early_stopping_monitor,
+        num_classes=num_classes,
     )
 
 
@@ -199,6 +232,14 @@ def main():
         type=int,
         default=10,
         help="How many patience epochs training will have for early stopping",
+    )
+
+    parser.add_argument(
+        "--early_stopping_monitor",
+        type=str.lower,
+        choices=list(MONITORS),
+        default="valid_metric",
+        help="What early stopping and the saved checkpoint follow: 'valid_metric' (higher is better) or 'train_loss' (lower is better)",
     )
 
     parser.add_argument(
