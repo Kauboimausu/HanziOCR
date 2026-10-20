@@ -29,8 +29,8 @@ async def lifespan(app: FastAPI):
     if model_dir is None:
         bucket = os.environ["MODEL_BUCKET"]
         s3_client = boto3.client("s3")
-        model_name = os.environ.get("MODEL_NAME", "hanziOCR").strip("/", "")
-        model_version = os.environ.get("MODEL_VERSION", "V1").strip("/", "")
+        model_name = os.environ.get("MODEL_NAME", "hanziOCR").strip("/")
+        model_version = os.environ.get("MODEL_VERSION", "V1").strip("/")
 
         prefix = f"{model_name}/{model_version}/"
         model_dir = download_model(s3_client, bucket, prefix, dest_dir=mkdtemp())
