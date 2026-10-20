@@ -6,6 +6,9 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
+# File with the parameters used to generate a dataset, saved next to its manifest
+GENERATION_PARAMETERS_NAME = "generation_parameters.json"
+
 
 def find_project_root():
     """
