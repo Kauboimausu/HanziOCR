@@ -7,6 +7,9 @@
 data/
 .python-version
 *.ipynb
-**/pycache
+**/__pycache__
 
 tests/
+
+.pytest_cache
+.python_version
