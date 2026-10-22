@@ -5,7 +5,6 @@ import numpy as np
 import pytest
 import torch
 
-from hanzi_ocr.hanzi_model import HanziModel
 from hanzi_ocr.model_inference import (
     create_character_transformers,
     find_character_pairs,
@@ -67,33 +66,20 @@ def test_character_pairs_keep_input_order(converters):
     result = find_character_pairs(["爱", "中", "國"], *converters)
     assert result == [("爱", "愛"), ("中", "中"), ("国", "國")]
 
-CODEPOINTS = [ord("中"), ord("文"), ord("字")]
-
-
-@pytest.fixture 
-def model_dir(tmp_path):
-    model = HanziModel(len(CODEPOINTS))
-    torch.save(model.state_dict(), tmp_path / "checkpoint.pt")
-    (tmp_path / "le.json").write_text(json.dumps(CODEPOINTS))
-    return tmp_path
 
 def test_load_model_is_in_eval_mode(model_dir):
     model, _ = load_model(model_dir, "cpu")
     assert not model.training
+    
 
-def encode_png(image):
-    ok, buffer = cv2.imencode(".png", image)
-    assert ok 
-    return buffer.tobytes()
-
-def test_preprocess_image_returns_model_ready_batch():
+def test_preprocess_image_returns_model_ready_batch(encode_png):
     image = np.full((100, 80), 255, dtype=np.uint8)
     image[30:70, 20:60] = 0
     batch = preprocess_image(encode_png(image))
     assert batch.shape == (1, 1, 64, 64)
     assert batch.dtype == torch.float32
 
-def test_preprocess_image_matches_training_normalization():
+def test_preprocess_image_matches_training_normalization(encode_png):
     image = np.full((100, 80), 255, dtype=np.uint8)
     image[30:70, 20:60] = 0
     batch = preprocess_image(encode_png(image))
@@ -105,14 +91,14 @@ def test_load_model_accepts_str_path(model_dir):
     assert not model.training
 
 
-def test_load_model_returns_training_classes(model_dir):
+def test_load_model_returns_training_classes(model_dir, codepoints):
     _, le = load_model(model_dir, "cpu")
-    assert le.classes_.tolist() == CODEPOINTS
+    assert le.classes_.tolist() == codepoints
 
 
-def test_load_model_fails_if_classes_do_not_match_checkpoint(model_dir):
+def test_load_model_fails_if_classes_do_not_match_checkpoint(model_dir, codepoints):
     # le.json from a different model, with more classes than the checkpoint
-    (model_dir / "le.json").write_text(json.dumps(CODEPOINTS + [ord("人")]))
+    (model_dir / "le.json").write_text(json.dumps(codepoints + [ord("人")]))
     with pytest.raises(RuntimeError):
         load_model(model_dir, "cpu")
 
@@ -131,7 +117,7 @@ def test_preprocess_image_accepts_jpeg():
     assert preprocess_image(buffer.tobytes()).shape == (1, 1, 64, 64)
 
 
-def test_preprocess_image_converts_color_to_grayscale():
+def test_preprocess_image_converts_color_to_grayscale(encode_png):
     image = np.full((100, 80, 3), 255, dtype=np.uint8)
     assert preprocess_image(encode_png(image)).shape == (1, 1, 64, 64)
 
@@ -158,7 +144,7 @@ def fixed_le():
 
 
 @pytest.fixture
-def image_batch():
+def image_batch(encode_png):
     image = np.full((100, 80), 255, dtype=np.uint8)
     image[30:70, 20:60] = 0
     return preprocess_image(encode_png(image))
@@ -213,9 +199,9 @@ def test_inference_is_deterministic_with_real_model(model_dir, image_batch, conv
 
 
 def test_inference_with_real_model_only_predicts_known_characters(
-    model_dir, image_batch, converters
+    model_dir, codepoints, image_batch, converters
 ):
     model, le = load_model(model_dir, "cpu")
-    known = {chr(codepoint) for codepoint in CODEPOINTS}
+    known = {chr(codepoint) for codepoint in codepoints}
     for _, (simplified, _) in inference(model, le, image_batch, 3, *converters):
         assert simplified in known
