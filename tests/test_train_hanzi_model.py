@@ -21,6 +21,7 @@ def make_opts(**overrides):
         "lr": 0.001,
         "epochs": 1,
         "patience_epochs": 1,
+        "early_stopping_monitor": "valid_metric",
         "batch_size": 3,
         "data_folder": "data",
         "model_name": "test_model",
@@ -71,6 +72,20 @@ def test_train_model_saves_all_outputs(project):
     assert (model_folder / "checkpoint.pt").is_file()
     assert (model_folder / "le.json").is_file()
     assert (model_folder / "train_hyperparameters.json").is_file()
+    assert (model_folder / "training_history.json").is_file()
+    assert (model_folder / "training_history.png").is_file()
+
+
+def test_train_model_history_has_one_entry_per_epoch(project):
+    train_model(project, make_opts(epochs=2, patience_epochs=5))
+    history_path = project / "data" / "model_weights" / "test_model" / "training_history.json"
+    history = json.loads(history_path.read_text())
+    assert {len(values) for values in history.values()} == {2}
+
+
+@pytest.mark.parametrize("monitor", ["valid_metric", "train_loss"])
+def test_train_model_accepts_both_monitors_with_plateau_scheduler(project, monitor):
+    train_model(project, make_opts(early_stopping_monitor=monitor, scheduler="performance"))
 
 
 def test_train_model_saves_label_encoder_classes(project):
@@ -82,3 +97,17 @@ def test_train_model_saves_label_encoder_classes(project):
 def test_train_model_handles_single_sample_last_batch(project):
     # 3 training images with batch_size 2 leaves a last batch of 1 image
     train_model(project, make_opts(batch_size=2))
+
+
+def test_train_model_copies_data_generation_parameters(project):
+    parameters = {"font_weights": ["Light", "Bold"], "character_size": 100}
+    (project / "data" / "manifest" / "generation_parameters.json").write_text(json.dumps(parameters))
+    train_model(project, make_opts())
+    copied = project / "data" / "model_weights" / "test_model" / "data_generation_parameters.json"
+    assert json.loads(copied.read_text()) == parameters
+
+
+def test_train_model_works_without_data_generation_parameters(project, capsys):
+    train_model(project, make_opts())
+    assert not (project / "data" / "model_weights" / "test_model" / "data_generation_parameters.json").exists()
+    assert "WARNING" in capsys.readouterr().out

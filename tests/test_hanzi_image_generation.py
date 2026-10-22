@@ -1,14 +1,21 @@
+import json
 import shutil
 from argparse import Namespace
 
 import pandas as pd
 import pytest
-from hanzi_image_generation import get_hanzi_list, write_images
+from hanzi_image_generation import get_font_weights, get_hanzi_list, write_images
+from PIL import ImageFont
 
-from hanzi_ocr.utils import find_project_root
+from hanzi_ocr.utils import GENERATION_PARAMETERS_NAME, find_project_root
 
-# A real font from the project, it's only read, never modified
+# Real fonts from the project, they're only read, never modified
 FONT_NAME = "ZCOOLKuaiLe-Regular.ttf"
+VARIABLE_FONT_NAME = "NotoSerifSC-VariableFont_wght.ttf"
+
+
+def load_font(name):
+    return ImageFont.truetype(str(find_project_root() / "data" / "fonts" / name), size=40)
 
 
 def make_opts(**overrides):
@@ -26,6 +33,7 @@ def make_opts(**overrides):
         "width_padding": 5,
         "height_padding": 5,
         "hanzi_styles": "s",
+        "font_weights": ["Light", "Regular", "Bold"],
     }
     opts.update(overrides)
     return Namespace(**opts)
@@ -89,3 +97,61 @@ def test_write_images_logs_missing_glyphs(project):
 def test_write_images_both_styles(project):
     write_images(project, make_opts(hanzi_styles="st"))
     assert set(read_manifest(project)["type"]) == {"simplified", "traditional"}
+
+
+def test_get_font_weights_single_weight_font_is_one_pass():
+    assert get_font_weights(load_font(FONT_NAME), ["Light", "Regular", "Bold"]) == [None]
+
+
+def test_get_font_weights_variable_font_returns_wanted_names_as_str():
+    weights = get_font_weights(load_font(VARIABLE_FONT_NAME), ["Light", "Regular", "Bold"])
+    assert weights == ["Light", "Regular", "Bold"]
+    assert all(isinstance(weight, str) for weight in weights)
+
+
+def test_get_font_weights_only_returns_wanted_weights():
+    assert get_font_weights(load_font(VARIABLE_FONT_NAME), ["Bold"]) == ["Bold"]
+
+
+@pytest.fixture
+def variable_project(project):
+    """Same fake project, plus a variable font"""
+    fonts = project / "data" / "fonts"
+    shutil.copy(find_project_root() / "data" / "fonts" / VARIABLE_FONT_NAME, fonts / VARIABLE_FONT_NAME)
+    return project
+
+
+def test_write_images_renders_each_weight_of_a_variable_font(variable_project):
+    write_images(variable_project, make_opts())
+    manifest = read_manifest(variable_project)
+    variable_rows = manifest[manifest["font"] == VARIABLE_FONT_NAME]
+    assert sorted(variable_rows["weight"].unique()) == ["Bold", "Light", "Regular"]
+    # 中 and 爱, once per weight
+    assert len(variable_rows) == 2 * 3
+
+
+def test_write_images_labels_single_weight_fonts_as_default(variable_project):
+    write_images(variable_project, make_opts())
+    manifest = read_manifest(variable_project)
+    assert set(manifest[manifest["font"] == FONT_NAME]["weight"]) == {"default"}
+
+
+def test_write_images_respects_font_weights_option(variable_project):
+    write_images(variable_project, make_opts(font_weights=["Bold"]))
+    manifest = read_manifest(variable_project)
+    assert set(manifest[manifest["font"] == VARIABLE_FONT_NAME]["weight"]) == {"Bold"}
+
+
+def test_write_images_file_names_are_unique_across_weights(variable_project):
+    write_images(variable_project, make_opts())
+    manifest = read_manifest(variable_project)
+    assert manifest["file name"].is_unique
+    assert len(list((variable_project / "data" / "imgs").iterdir())) == len(manifest)
+
+
+def test_write_images_saves_generation_parameters(project):
+    write_images(project, make_opts(font_weights=["Light", "Bold"]))
+    parameters_path = project / "data" / "manifest" / GENERATION_PARAMETERS_NAME
+    parameters = json.loads(parameters_path.read_text())
+    assert parameters["font_weights"] == ["Light", "Bold"]
+    assert parameters["character_size"] == 40
