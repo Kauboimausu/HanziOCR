@@ -10,7 +10,7 @@ from torch.nn import (
     Module,
     ReLU,
 )
-from torch.nn.init import kaiming_normal_, zeros_
+from torch.nn.init import kaiming_normal_, zeros_, xavier_uniform_
 
 
 class HanziModel(Module):
@@ -51,11 +51,13 @@ class HanziModel(Module):
         self.linear3 = Linear(128, n_classes)
 
         # Weight initialization
-        for mod in self.modules():
+        for mod in self.named_modules():
             if isinstance(mod, (Conv2d, Linear)):
                 kaiming_normal_(mod.weight, nonlinearity="relu")
                 if mod.bias is not None:
                     zeros_(mod.bias)
+        
+        xavier_uniform_(self.linear3.weight) # Layer not followed by relu, glorot is used
 
     def forward(self, X):
         for _, mod in self.named_children():
