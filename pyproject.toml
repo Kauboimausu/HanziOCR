@@ -12,9 +12,7 @@ dependencies = [
     "pandas",
     "pillow",
     "fonttools",
-    "datasets",
     "opencc",
-    "matplotlib>=3.7.5",
     "scikit-learn>=1.9.1",
     "albumentations>=1.4.18",
     "torchmetrics>=1.5.2",
@@ -33,9 +31,20 @@ readme = "README.md"
 dev = [
     "httpx>=0.28.1",
     "jupyter>=1.1.1",
+    "matplotlib>=3.7.5",
+    "datasets",
     "pytest",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["scripts"]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+
