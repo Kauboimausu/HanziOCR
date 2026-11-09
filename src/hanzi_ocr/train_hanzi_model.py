@@ -14,7 +14,11 @@ from torch.utils.data import DataLoader
 
 from hanzi_ocr import utils
 from hanzi_ocr.hanzi_model import HanziModel
-from hanzi_ocr.pipelines import augmentation_pipeline, normalization_pipeline
+from hanzi_ocr.pipelines import (
+    augmentation_pipeline,
+    normalization_pipeline,
+    seed_worker,
+)
 from hanzi_ocr.SyntheticHanziDataset import SynthethicHanziDataset
 from hanzi_ocr.train_nn import (
     MONITORS,
@@ -140,7 +144,14 @@ def train_model(root, opts):
 
     rng = torch.Generator().manual_seed(opts.random_seed)
     train_loader = DataLoader(
-        train_ds, opts.batch_size, shuffle=True, generator=rng, drop_last=True
+        train_ds,
+        opts.batch_size,
+        shuffle=True,
+        generator=rng,
+        drop_last=True,
+        num_workers=opts.num_workers,
+        worker_init_fn=seed_worker,
+        persistent_workers=opts.num_workers > 0,
     )
     valid_loader = DataLoader(valid_ds, opts.batch_size, shuffle=False)
 
@@ -174,7 +185,9 @@ def train_model(root, opts):
         monitor=opts.early_stopping_monitor,
     )
 
-    with open(os.path.join(model_save_location, "training_history.json"), "w") as jsonfile:
+    with open(
+        os.path.join(model_save_location, "training_history.json"), "w"
+    ) as jsonfile:
         json.dump(history, jsonfile, indent=4)
 
     plot_training_history(
@@ -247,6 +260,13 @@ def main():
         type=int,
         default=128,
         help="Batch size that will be used for training",
+    )
+    
+    parser.add_argument(
+        "--num_workers",
+        type=int,
+        default=3,
+        help="Number of workers to be used for the image augmentation process",
     )
 
     parser.add_argument(

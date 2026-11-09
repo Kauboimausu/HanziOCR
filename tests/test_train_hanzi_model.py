@@ -23,6 +23,7 @@ def make_opts(**overrides):
         "patience_epochs": 1,
         "early_stopping_monitor": "valid_metric",
         "batch_size": 3,
+        "num_workers": 0,
         "data_folder": "data",
         "model_name": "test_model",
         "imgs_folder": "imgs",
@@ -97,6 +98,11 @@ def test_train_model_saves_label_encoder_classes(project):
 def test_train_model_handles_single_sample_last_batch(project):
     # 3 training images with batch_size 2 leaves a last batch of 1 image
     train_model(project, make_opts(batch_size=2))
+
+
+def test_train_model_runs_with_workers(project):
+    # Goes through seed_worker and persistent_workers, which num_workers=0 skips
+    train_model(project, make_opts(num_workers=2))
 
 
 def test_train_model_copies_data_generation_parameters(project):

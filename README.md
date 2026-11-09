@@ -83,6 +83,7 @@ uv run python -m hanzi_ocr.train_hanzi_model \
 
 - `--holdout_fonts` lists the fonts used only for validation. Names ignore capitalization and the file extension.
 - `--early_stopping_monitor` chooses what early stopping and the saved checkpoint follow: `valid_metric` (default) or `train_loss`.
+- `--num_workers` (default 3) sets how many processes load and augment training images in parallel. Each worker gets its own augmentation seed, derived from `--random_seed`, so runs are reproducible as long as the number of workers stays the same. When training on the CPU, the workers compete with the model for cores, so a few workers usually work better than many. Use `0` to load images in the main process, which helps when debugging.
 - Other options include `--optimizer` (`adam`, `adamw`, `nag`, `momentum`), `--scheduler` (`performance`, `onecycle`), `--metric` (`accuracy`, `f1`, `f1 macro`), `--lr`, `--batch_size` and `--patience_epochs` for early stopping.
 
 The results are saved in `data/model_weights/<model_name>/`:
