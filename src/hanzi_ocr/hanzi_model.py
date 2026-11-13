@@ -36,19 +36,20 @@ class HanziModel(Module):
         self.conv5 = Conv2d(128, 256, kernel_size=3, padding=1)
         self.relu5 = ReLU()
         self.norm5 = BatchNorm2d(256)
+        self.pool4 = MaxPool2d(2)
 
         # MLP 
         self.flatten = Flatten()
-        self.linear1 = Linear(256 * 8 * 8, 128)
+        self.linear1 = Linear(256 * 4 * 4, 512)
         self.relu6 = ReLU()
         self.dropout1 = Dropout(0.2)
-        self.norm6 = BatchNorm1d(num_features=128)
-        self.linear2 = Linear(128, 128)
+        self.norm6 = BatchNorm1d(num_features=512)
+        self.linear2 = Linear(512, 512)
         self.relu7 = ReLU()
         self.dropout2 = Dropout(0.2)
-        self.norm7 = BatchNorm1d(num_features=128)
+        self.norm7 = BatchNorm1d(num_features=512)
         self.dropout3 = Dropout(0.5)
-        self.linear3 = Linear(128, n_classes)
+        self.linear3 = Linear(512, n_classes)
 
         # Weight initialization
         for mod in self.modules():
