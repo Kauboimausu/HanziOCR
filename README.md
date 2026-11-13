@@ -50,6 +50,25 @@ Requires Python 3.12 or newer and [uv](https://docs.astral.sh/uv/).
 uv sync
 ```
 
+This installs the CPU build of PyTorch, which works everywhere. To train on an AMD GPU instead,
+sync the `rocm` group, which replaces it with a ROCm build:
+
+```bash
+uv sync --no-group cpu --group rocm
+```
+
+The two are mutually exclusive, so `cpu` has to be disabled when `rocm` is enabled. Exporting
+`UV_NO_GROUP=cpu` once makes every later command shorter, since `uv run` keeps the environment in
+whichever state its flags ask for:
+
+```bash
+export UV_NO_GROUP=cpu
+uv run --group rocm python -m hanzi_ocr.train_hanzi_model ...
+```
+
+Without those flags `uv run` syncs back to the CPU build, because `cpu` is the default group.
+See [Training on a GPU](#training-on-a-gpu) for the rest of what an AMD card needs.
+
 ## Preparing the data
 
 Everything is stored under `data/`, which is not tracked by git.
@@ -84,7 +103,41 @@ uv run python -m hanzi_ocr.train_hanzi_model \
 - `--holdout_fonts` lists the fonts used only for validation. Names ignore capitalization and the file extension.
 - `--early_stopping_monitor` chooses what early stopping and the saved checkpoint follow: `valid_metric` (default) or `train_loss`.
 - `--num_workers` (default 3) sets how many processes load and augment training images in parallel. Each worker gets its own augmentation seed, derived from `--random_seed`, so runs are reproducible as long as the number of workers stays the same. When training on the CPU, the workers compete with the model for cores, so a few workers usually work better than many. Use `0` to load images in the main process, which helps when debugging.
+- `--device` chooses where training runs: `auto` (the default, picks a GPU when there is one), `cpu`, `cuda` or `mps`. The device that was actually used is recorded in `train_hyperparameters.json`.
 - Other options include `--optimizer` (`adam`, `adamw`, `nag`, `momentum`), `--scheduler` (`performance`, `onecycle`), `--metric` (`accuracy`, `f1`, `f1 macro`), `--lr`, `--batch_size` and `--patience_epochs` for early stopping.
+
+Note that `--scheduler performance` uses `ReduceLROnPlateau` with its own default patience of 10
+epochs, so `--patience_epochs` should be comfortably higher than that or early stopping will end the
+run before the learning rate is ever reduced.
+
+### Training on a GPU
+
+PyTorch reports both CUDA and ROCm cards through `torch.cuda`, so `--device auto` picks either one up
+without any change. On an AMD card, sync the `rocm` group as described in [Setup](#setup).
+
+Cards that ROCm does not officially support can still work by presenting themselves as a supported
+architecture. A Radeon RX 6600 (`gfx1032`), for example, needs:
+
+```bash
+export HSA_OVERRIDE_GFX_VERSION=10.3.0
+```
+
+which makes the runtime use the `gfx1030` kernels. Check that the build actually ships them before
+trusting it, because the override cannot invent kernels that aren't in the wheel:
+
+```bash
+uv run --no-group cpu --group rocm python -c "import torch; print(torch.cuda.get_arch_list())"
+```
+
+If the architecture you are overriding to is missing from that list, the card won't work with that
+wheel. The `rocm6.4` index pinned in `pyproject.toml` includes `gfx1030`; other ROCm channels vary,
+and the newest torch release is usually unavailable there, so the ROCm and CPU groups sit on
+different torch versions. Checkpoints are plain `state_dict`s and move between them fine.
+
+Should a run crash or hang on the GPU, `dmesg` is the place to look: `amdgpu` ring timeouts or GPU
+resets point at a driver fault rather than anything tunable in this project. A smaller
+`--batch_size`, `MIOPEN_FIND_MODE=NORMAL` or `PYTORCH_HIP_ALLOC_CONF=expandable_segments:True` are
+worth trying first, and `--device cpu` always works.
 
 The results are saved in `data/model_weights/<model_name>/`:
 

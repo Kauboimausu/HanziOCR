@@ -24,6 +24,7 @@ def make_opts(**overrides):
         "early_stopping_monitor": "valid_metric",
         "batch_size": 3,
         "num_workers": 0,
+        "device": "auto",
         "data_folder": "data",
         "model_name": "test_model",
         "imgs_folder": "imgs",
@@ -98,6 +99,25 @@ def test_train_model_saves_label_encoder_classes(project):
 def test_train_model_handles_single_sample_last_batch(project):
     # 3 training images with batch_size 2 leaves a last batch of 1 image
     train_model(project, make_opts(batch_size=2))
+
+
+def recorded_device(project):
+    hyperparameters_path = (
+        project / "data" / "model_weights" / "test_model" / "train_hyperparameters.json"
+    )
+    return json.loads(hyperparameters_path.read_text())["device"]
+
+
+def test_train_model_trains_on_the_chosen_device(project):
+    # "auto" would pick the GPU when there is one, this forces the CPU instead
+    train_model(project, make_opts(device="cpu"))
+    assert recorded_device(project) == "cpu"
+
+
+def test_train_model_records_the_resolved_device(project):
+    # "auto" is resolved before being saved, so the record says where it really trained
+    train_model(project, make_opts(device="auto"))
+    assert recorded_device(project) in {"cpu", "cuda", "mps"}
 
 
 def test_train_model_runs_with_workers(project):

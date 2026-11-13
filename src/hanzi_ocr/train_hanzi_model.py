@@ -66,6 +66,10 @@ def train_model(root, opts):
     with open(json_save_path, "w") as jsonfile:
         json.dump(le.classes_.tolist(), jsonfile, indent=4)
 
+    # The device the model actually trained on is more useful to keep than "auto"
+    device = get_device() if opts.device == "auto" else opts.device
+    opts.device = device
+
     with open(train_hyperparameters_path, "w") as jsonfile:
         json.dump(vars(opts), jsonfile, indent=4)
 
@@ -85,7 +89,6 @@ def train_model(root, opts):
 
     imgs_folder_path = os.path.join(root, opts.data_folder, opts.imgs_folder)
 
-    device = get_device()
     num_classes = len(le.classes_)
 
     model = HanziModel(num_classes).to(device)
@@ -267,6 +270,14 @@ def main():
         type=int,
         default=3,
         help="Number of workers to be used for the image augmentation process",
+    )
+
+    parser.add_argument(
+        "--device",
+        type=str.lower,
+        choices=["auto", "cpu", "cuda", "mps"],
+        default="auto",
+        help="Device used for training, 'auto' picks the best one available",
     )
 
     parser.add_argument(

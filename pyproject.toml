@@ -8,7 +8,6 @@ version = "0.0.3"
 
 dependencies = [
     "numpy",
-    "torch",
     "pandas",
     "pillow",
     "fonttools",
@@ -36,15 +35,37 @@ dev = [
     "pytest",
 ]
 
+# Torch comes from one of these groups, never both. "cpu" is the default and works
+# everywhere, "rocm" builds against an AMD GPU:
+#     uv sync                              # CPU
+#     uv sync --no-group cpu --group rocm  # AMD GPU
+cpu = ["torch"]
+rocm = ["torch", "pytorch-triton-rocm"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["scripts"]
+
+[tool.uv]
+conflicts = [[{ group = "cpu" }, { group = "rocm" }]]
+# "cpu" is listed here so a plain 'uv sync' installs the CPU torch instead of resolving
+# one from PyPI, which would drag in the CUDA wheels this project never needs
+default-groups = ["dev", "cpu"]
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
+[[tool.uv.index]]
+name = "pytorch-rocm"
+url = "https://download.pytorch.org/whl/rocm6.4"
+explicit = true
+
 [tool.uv.sources]
-torch = [{ index = "pytorch-cpu" }]
+torch = [
+    { index = "pytorch-cpu", group = "cpu" },
+    { index = "pytorch-rocm", group = "rocm" },
+]
+pytorch-triton-rocm = [{ index = "pytorch-rocm", group = "rocm" }]
 
